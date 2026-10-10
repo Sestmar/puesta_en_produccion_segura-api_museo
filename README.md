@@ -20,6 +20,8 @@ API REST para un catálogo de museo construida con FastAPI, diseñada siguiendo 
 - **CORS**: restringido a los orígenes configurados
 - **Secretos** mediante variables de entorno (`.env`), nunca codificados en duro; el arranque falla en producción si el secreto falta o es débil
 - **Registro estructurado**: logs JSON de una sola línea con un id por solicitud (`X-Request-ID`, autogenerado o propagado), método, ruta, estado y duración
+- **Métricas Prometheus**: `/metrics` expone `http_requests_total`, `http_request_duration_seconds` y `audit_events_total` en formato de texto de exposición, listo para que Prometheus/Grafana lo scrapeen
+- **Pool de conexiones sintonizado** para PostgreSQL: tamaño/acceso fijos (`DB_POOL_SIZE`, `DB_MAX_OVERFLOW`), `pool_pre_ping` y reciclado por debajo del timeout del servidor (`DB_POOL_RECYCLE_SECONDS`); se ignora en SQLite
 - **Sondas de estado**: `/health` (liveness) y `/health/ready` (readiness, comprueba la base de datos)
 - **Registro de auditoría (a prueba de manipulación)**: cada evento de autenticación (registro, inicio de sesión correcto o fallido, bloqueo, refresh, cierre de sesión y revocación de sesión) y cada operación de escritura (crear/actualizar/eliminar) queda registrado en `audit_logs` con el actor, el recurso, la IP, el user-agent y el `request_id` correlacionado; las credenciales nunca se registran. Cada entrada se encadena con la anterior mediante un HMAC-SHA256 (clave `SECRET_KEY`), de modo que alterar, borrar, reordenar o insertar filas directamente en la base de datos rompe la cadena y queda detectado por `GET /audit/verify` (solo admin). Con `AUDIT_ANCHOR_PATH` definido, la cabecera de la cadena se escribe además en un archivo externo firmado, de modo que el **truncado de la cola** (que la cadena por sí sola no puede detectar) también queda detectado. El registro puede consultarse con `GET /audit` (solo admin)
 - **Documentación interactiva** en `/docs` (Swagger UI) y `/redoc`
@@ -72,7 +74,7 @@ pip install -r requirements-dev.txt
 pytest
 ```
 
-Las pruebas corren contra SQLite y dejan la suite completa en verde (178 tests). `pytest` aplica además el umbral de cobertura de ramas (mínimo 90 %).
+Las pruebas corren contra SQLite y dejan la suite completa en verde (186 tests). `pytest` aplica además el umbral de cobertura de ramas (mínimo 90 %).
 
 ## Calidad del código
 
@@ -89,6 +91,15 @@ mypy app       # verificación de tipos estáticos
 2. **quality** — `ruff check .` y `mypy app`
 3. **migrations** — `alembic upgrade head` → `downgrade base` → `upgrade head` contra PostgreSQL real, para verificar ambas direcciones de cada migración
 4. **security** — `pip-audit` sobre las dependencias y `gitleaks` para detectar secretos en el repositorio
+
+**Dependabot** (`.github/dependabot.yml`) abre mensualmente PRs de actualización de
+dependencias Python y de GitHub Actions con revisión agrupada.
+
+## Respaldo y restauración
+
+Procedimiento probado (dump → pérdida simulada → restore → verificación) en
+[`docs/backup-runbook.md`](docs/backup-runbook.md). Incluye la regla crítica de
+restaurar siempre la base junto con el ancla de auditoría del mismo respaldo.
 
 La suite cubre autenticación, RBAC, validación, limitación de tasa, integridad referencial y cabeceras de seguridad.
 
@@ -142,6 +153,7 @@ curl -X POST http://127.0.0.1:8000/artists ^
 | DELETE | `/artists/{id}`, `/rooms/{id}`, `/artworks/{id}` | admin | Eliminar (204) |
 | GET | `/health` | público | Comprobación de liveness (sin acceso a la base de datos) |
 | GET | `/health/ready` | público | Comprobación de readiness (consulta la base de datos; 503 si está caída) |
+| GET | `/metrics` | público | Métricas Prometheus en texto de exposición (exento del límite de tasa) |
 
 Parámetros de consulta del listado: `skip`, `limit` (máximo 100); las obras también aceptan los filtros `artist_id` y `room_id`.
 

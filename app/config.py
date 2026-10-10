@@ -49,6 +49,10 @@ class Settings(BaseSettings):
     ratelimit_storage_uri: str | None = None
     trusted_proxies: list[str] = []
     audit_anchor_path: str | None = None
+    db_pool_size: int = 5
+    db_max_overflow: int = 10
+    db_pool_recycle_seconds: int = 1800
+    db_pool_pre_ping: bool = True
 
 
 settings = Settings()

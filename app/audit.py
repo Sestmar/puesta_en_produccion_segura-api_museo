@@ -14,6 +14,7 @@ from app.checkpoint import CheckpointError, load_checkpoint
 from app.client_ip import resolve_client_ip
 from app.config import settings
 from app.logging_config import request_id_ctx
+from app.metrics import record_audit_event
 from app.models import AuditLog
 
 logger = logging.getLogger(__name__)
@@ -203,6 +204,7 @@ def record_event(
     )
     db.add(entry)
     db.commit()
+    record_audit_event(action)
     try:
         anchor_head(id=entry.id, entry_hash=entry.entry_hash)
     except OSError:

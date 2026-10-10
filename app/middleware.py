@@ -9,10 +9,12 @@ from starlette.responses import JSONResponse, RedirectResponse
 from app.client_ip import resolve_client_ip
 from app.config import settings
 from app.logging_config import request_id_ctx
+from app.metrics import observe_request
 
 access_logger = logging.getLogger("app.access")
 
 DOCS_PATHS = frozenset({"/docs", "/redoc", "/openapi.json"})
+METRICS_PATH = "/metrics"
 
 
 class ProductionDocsMiddleware(BaseHTTPMiddleware):
@@ -72,12 +74,27 @@ class RequestContextMiddleware(BaseHTTPMiddleware):
             response = await call_next(request)
         except Exception:
             self._log(request, request_id, 500, start, failed=True)
+            self._record_metrics(request, 500, start)
             request_id_ctx.reset(token)
             raise
         response.headers["X-Request-ID"] = request_id
         self._log(request, request_id, response.status_code, start)
+        self._record_metrics(request, response.status_code, start)
         request_id_ctx.reset(token)
         return response
+
+    @staticmethod
+    def _record_metrics(request: Request, status_code: int, start: float) -> None:
+        if request.url.path == METRICS_PATH:
+            return
+        route = request.scope.get("route")
+        path = getattr(route, "path", request.url.path)
+        observe_request(
+            request.method,
+            path,
+            status_code,
+            time.perf_counter() - start,
+        )
 
     @staticmethod
     def _log(

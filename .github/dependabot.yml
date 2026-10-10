@@ -1,0 +1,27 @@
+version: 2
+updates:
+  - package-ecosystem: pip
+    directory: /
+    schedule:
+      interval: weekly
+      day: monday
+    open-pull-requests-limit: 5
+    groups:
+      runtime-deps:
+        patterns:
+          - fastapi
+          - uvicorn
+          - sqlalchemy
+          - alembic
+      dev-deps:
+        patterns:
+          - pytest*
+          - ruff
+          - mypy
+
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: weekly
+      day: monday
+    open-pull-requests-limit: 5
