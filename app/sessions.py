@@ -1,4 +1,4 @@
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 
 from fastapi import Request
 from sqlalchemy import select
@@ -11,12 +11,12 @@ from app.security import generate_refresh_token, hash_refresh_token
 
 
 def _utcnow() -> datetime:
-    return datetime.now(timezone.utc)
+    return datetime.now(UTC)
 
 
 def _as_utc(value: datetime) -> datetime:
     """SQLite returns naive datetimes; treat them as UTC."""
-    return value if value.tzinfo is not None else value.replace(tzinfo=timezone.utc)
+    return value if value.tzinfo is not None else value.replace(tzinfo=UTC)
 
 
 def client_info(request: Request) -> tuple[str | None, str | None]:

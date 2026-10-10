@@ -57,7 +57,7 @@ def create_room(
         raise HTTPException(
             status_code=status.HTTP_409_CONFLICT,
             detail="Room name already exists",
-        )
+        ) from None
     db.refresh(room)
     record_event(
         db,
@@ -89,7 +89,7 @@ def update_room(
         raise HTTPException(
             status_code=status.HTTP_409_CONFLICT,
             detail="Room name already exists",
-        )
+        ) from None
     db.refresh(room)
     record_event(
         db,

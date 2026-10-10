@@ -14,7 +14,7 @@ from app.middleware import (
     SecurityHeadersMiddleware,
 )
 from app.ratelimit import RateLimitMiddleware, limiter
-from app.routers import artworks, artists, audit, auth, health, rooms, users
+from app.routers import artists, artworks, audit, auth, health, rooms, users
 
 configure_logging(settings.log_level)
 
@@ -37,7 +37,7 @@ app = FastAPI(
 )
 
 app.state.limiter = limiter
-app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
+app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)  # type: ignore[arg-type]
 
 app.add_middleware(
     CORSMiddleware,

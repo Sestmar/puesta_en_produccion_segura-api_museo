@@ -81,7 +81,7 @@ def create_artwork(
         raise HTTPException(
             status_code=status.HTTP_422_UNPROCESSABLE_CONTENT,
             detail="Invalid artist or room reference",
-        )
+        ) from None
     db.refresh(artwork)
     record_event(
         db,
@@ -117,7 +117,7 @@ def update_artwork(
         raise HTTPException(
             status_code=status.HTTP_422_UNPROCESSABLE_CONTENT,
             detail="Invalid artist or room reference",
-        )
+        ) from None
     db.refresh(artwork)
     record_event(
         db,

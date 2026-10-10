@@ -2,7 +2,7 @@ import pytest
 from sqlalchemy import delete, select
 from sqlalchemy.exc import IntegrityError
 
-from app.models import Artist, Artwork, Room, Role, User
+from app.models import Artist, Artwork, Role, Room, User
 
 
 def test_user_unique_username(db):

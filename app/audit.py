@@ -3,7 +3,7 @@ import hmac
 import json
 import logging
 from dataclasses import dataclass
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 
 from fastapi import Request
 from sqlalchemy import select
@@ -39,7 +39,7 @@ class AuditAction:
 
 
 def _utcnow() -> datetime:
-    return datetime.now(timezone.utc)
+    return datetime.now(UTC)
 
 
 def _canonical_timestamp(value: datetime) -> str:
@@ -49,8 +49,8 @@ def _canonical_timestamp(value: datetime) -> str:
     ones. Both must serialise identically so the chain can be re-verified.
     """
     if value.tzinfo is None:
-        value = value.replace(tzinfo=timezone.utc)
-    return value.astimezone(timezone.utc).isoformat()
+        value = value.replace(tzinfo=UTC)
+    return value.astimezone(UTC).isoformat()
 
 
 def hash_audit_entry(

@@ -10,8 +10,8 @@ os.environ.setdefault("BCRYPT_ROUNDS", "4")
 import pytest
 from fastapi.testclient import TestClient
 
-from app.database import Base, SessionLocal, engine
 from app import models  # noqa: F401  (registers tables in Base.metadata)
+from app.database import Base, SessionLocal, engine
 
 
 @pytest.fixture(autouse=True)

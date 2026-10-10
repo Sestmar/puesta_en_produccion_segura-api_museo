@@ -33,6 +33,5 @@ def test_startup_guard_is_wired_in_production(monkeypatch):
     monkeypatch.setattr(
         main.settings, "secret_key", "dev-only-secret-change-me-please-32-bytes"
     )
-    with pytest.raises(RuntimeError):
-        with TestClient(main.app):
-            pass
+    with pytest.raises(RuntimeError), TestClient(main.app):
+        pass

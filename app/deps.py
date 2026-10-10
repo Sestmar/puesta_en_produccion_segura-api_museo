@@ -25,7 +25,7 @@ def user_from_token(token: str, db: Session) -> User:
             token, settings.secret_key, algorithms=[settings.algorithm]
         )
     except jwt.PyJWTError:
-        raise credentials_error
+        raise credentials_error from None
     username = payload.get("sub")
     session_id = payload.get("sid")
     if not isinstance(username, str) or not isinstance(session_id, int):

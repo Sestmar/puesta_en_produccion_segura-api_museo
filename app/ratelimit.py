@@ -37,9 +37,12 @@ def _find_route_handler(routes, scope):
     for route in routes:
         if isinstance(route, _IncludedRouter):
             match, _child_scope, matched_route, _ctx = route._match(scope)
-            if match == Match.FULL and matched_route is not None:
-                if hasattr(matched_route, "endpoint"):
-                    handler = matched_route.endpoint
+            if (
+                match == Match.FULL
+                and matched_route is not None
+                and hasattr(matched_route, "endpoint")
+            ):
+                handler = matched_route.endpoint
         else:
             match, _child_scope = route.matches(scope)
             if match == Match.FULL and hasattr(route, "endpoint"):

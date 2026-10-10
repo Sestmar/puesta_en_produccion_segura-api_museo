@@ -27,5 +27,5 @@ def readiness(db: Annotated[Session, Depends(get_db)]):
         raise HTTPException(
             status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
             detail="Database unavailable",
-        )
+        ) from None
     return {"status": "ready"}

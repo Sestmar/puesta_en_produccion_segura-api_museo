@@ -16,8 +16,57 @@ jobs:
           cache: pip
       - name: Install dependencies
         run: pip install -r requirements-dev.txt
-      - name: Run tests
-        run: pytest -q
+      - name: Run tests (with coverage gate)
+        run: pytest
+
+  quality:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+          cache: pip
+      - name: Install dependencies
+        run: pip install -r requirements-dev.txt
+      - name: Lint
+        run: ruff check .
+      - name: Type-check
+        run: mypy app
+
+  migrations:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_USER: museum
+          POSTGRES_PASSWORD: museum
+          POSTGRES_DB: museum
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U museum"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+    env:
+      DATABASE_URL: postgresql+psycopg://museum:museum@localhost:5432/museum
+      SECRET_KEY: ci-secret-key-not-a-real-secret-0123456789abcdef
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+          cache: pip
+      - name: Install dependencies
+        run: pip install -r requirements.txt
+      - name: Upgrade to head
+        run: alembic upgrade head
+      - name: Downgrade to base
+        run: alembic downgrade base
+      - name: Upgrade to head again
+        run: alembic upgrade head
 
   security:
     runs-on: ubuntu-latest

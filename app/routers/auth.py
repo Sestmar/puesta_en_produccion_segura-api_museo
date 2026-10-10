@@ -1,10 +1,9 @@
-from typing import Annotated
-
 from datetime import timedelta
+from typing import Annotated
 
 from fastapi import APIRouter, Depends, HTTPException, Request, Response, status
 from fastapi.security import OAuth2PasswordRequestForm
-from sqlalchemy import func, select
+from sqlalchemy import select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
@@ -72,7 +71,7 @@ def register(
         raise HTTPException(
             status_code=status.HTTP_409_CONFLICT,
             detail="Username is already taken",
-        )
+        ) from None
     db.refresh(user)
     record_event(
         db,

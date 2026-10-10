@@ -1,4 +1,4 @@
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 
 from sqlalchemy import select
 
@@ -52,7 +52,7 @@ def test_expired_lockout_permits_login_and_resets(client, db):
     for _ in range(settings.max_failed_attempts):
         login(client, "admin", "WrongPassword1")
     user = db.scalar(select(User).where(User.username == "admin"))
-    user.locked_until = datetime(2020, 1, 1, tzinfo=timezone.utc)
+    user.locked_until = datetime(2020, 1, 1, tzinfo=UTC)
     db.commit()
     r = login(client, "admin", "AdminPass123")
     assert r.status_code == 200

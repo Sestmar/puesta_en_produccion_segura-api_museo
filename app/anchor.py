@@ -1,7 +1,7 @@
 import hashlib
 import hmac
 from dataclasses import dataclass
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from pathlib import Path
 
 from app.config import settings
@@ -41,7 +41,7 @@ def anchor_head(*, id: int, entry_hash: str) -> None:
     path = _path()
     if path is None:
         return
-    seen_at = datetime.now(timezone.utc).isoformat()
+    seen_at = datetime.now(UTC).isoformat()
     line = f"{id}|{entry_hash}|{seen_at}|{_signature(id, entry_hash, seen_at)}\n"
     path.parent.mkdir(parents=True, exist_ok=True)
     with path.open("a", encoding="utf-8") as handle:

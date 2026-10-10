@@ -8,7 +8,7 @@ Pruning audit entries moves the chain's genesis forward, so it records a signed
 checkpoint (see ``app.checkpoint``) that keeps ``GET /audit/verify`` working.
 """
 
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 
 from sqlalchemy import select
 from sqlalchemy.orm import Session
@@ -19,11 +19,11 @@ from app.models import AuditLog, AuthSession
 
 
 def _utcnow() -> datetime:
-    return datetime.now(timezone.utc)
+    return datetime.now(UTC)
 
 
 def _as_utc(value: datetime) -> datetime:
-    return value if value.tzinfo is not None else value.replace(tzinfo=timezone.utc)
+    return value if value.tzinfo is not None else value.replace(tzinfo=UTC)
 
 
 def prune_expired_sessions(db: Session, *, now: datetime | None = None) -> int:

@@ -1,6 +1,5 @@
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
-
 # Known placeholder secrets shipped in dev config, examples and docker-compose.
 # These must never be accepted when running in production.
 INSECURE_SECRET_KEYS = frozenset(

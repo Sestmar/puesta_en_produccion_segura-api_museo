@@ -72,6 +72,24 @@ pip install -r requirements-dev.txt
 pytest
 ```
 
+Las pruebas corren contra SQLite y dejan la suite completa en verde (178 tests). `pytest` aplica además el umbral de cobertura de ramas (mínimo 90 %).
+
+## Calidad del código
+
+```bash
+ruff check .   # lint (línea de importación, estilos, sanidad general)
+mypy app       # verificación de tipos estáticos
+```
+
+## Integración continua (GitHub Actions)
+
+`.github/workflows/ci.yml` ejecuta cuatro gates sobre cada push a `main` y cada pull request:
+
+1. **test** — suite completa con umbral de cobertura (90 % de ramas)
+2. **quality** — `ruff check .` y `mypy app`
+3. **migrations** — `alembic upgrade head` → `downgrade base` → `upgrade head` contra PostgreSQL real, para verificar ambas direcciones de cada migración
+4. **security** — `pip-audit` sobre las dependencias y `gitleaks` para detectar secretos en el repositorio
+
 La suite cubre autenticación, RBAC, validación, limitación de tasa, integridad referencial y cabeceras de seguridad.
 
 ## Flujo de autenticación
