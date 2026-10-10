@@ -8,7 +8,8 @@ from sqlalchemy.orm import Session
 
 from app.config import settings
 from app.database import get_db
-from app.models import Role, User
+from app.models import AuthSession, Role, User
+from app.sessions import is_expired
 
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/auth/login")
 
@@ -26,10 +27,16 @@ def user_from_token(token: str, db: Session) -> User:
     except jwt.PyJWTError:
         raise credentials_error
     username = payload.get("sub")
-    if not isinstance(username, str):
+    session_id = payload.get("sid")
+    if not isinstance(username, str) or not isinstance(session_id, int):
         raise credentials_error
-    user = db.scalar(select(User).where(User.username == username))
-    if user is None:
+    session = db.get(AuthSession, session_id)
+    if session is None or session.revoked_at is not None or is_expired(session):
+        raise credentials_error
+    user = session.user
+    if user is None or user.username != username:
+        raise credentials_error
+    if not user.is_active:
         raise credentials_error
     return user
 

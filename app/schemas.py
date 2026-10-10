@@ -1,4 +1,5 @@
 import re
+from datetime import datetime
 from typing import Literal
 
 from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
@@ -15,6 +16,12 @@ def _strip_blank(value: str) -> str:
     return value
 
 
+def _validate_password(value: str) -> str:
+    if not re.search(r"[A-Za-z]", value) or not re.search(r"\d", value):
+        raise ValueError("must contain at least one letter and one digit")
+    return value
+
+
 class UserCreate(BaseModel):
     username: str = Field(min_length=3, max_length=50, pattern=r"^[a-zA-Z0-9_.-]+$")
     password: str = Field(min_length=8, max_length=72)
@@ -23,20 +30,73 @@ class UserCreate(BaseModel):
     @field_validator("password")
     @classmethod
     def password_complexity(cls, value: str) -> str:
-        if not re.search(r"[A-Za-z]", value) or not re.search(r"\d", value):
-            raise ValueError("must contain at least one letter and one digit")
-        return value
+        return _validate_password(value)
 
 
 class UserOut(ORMModel):
     id: int
     username: str
     role: str
+    is_active: bool
+
+
+class UserUpdate(BaseModel):
+    role: Literal["admin", "viewer"] | None = None
+    is_active: bool | None = None
+
+
+class PasswordChange(BaseModel):
+    current_password: str = Field(min_length=1, max_length=72)
+    new_password: str = Field(min_length=8, max_length=72)
+
+    @field_validator("new_password")
+    @classmethod
+    def password_complexity(cls, value: str) -> str:
+        return _validate_password(value)
 
 
 class TokenOut(BaseModel):
     access_token: str
     token_type: str = "bearer"
+
+
+class TokenPairOut(BaseModel):
+    access_token: str
+    refresh_token: str
+    token_type: str = "bearer"
+
+
+class RefreshRequest(BaseModel):
+    refresh_token: str = Field(min_length=1)
+
+
+class SessionOut(ORMModel):
+    id: int
+    created_at: datetime
+    expires_at: datetime
+    revoked_at: datetime | None
+    user_agent: str | None
+    ip_address: str | None
+
+
+class AuditChainVerificationOut(BaseModel):
+    valid: bool
+    checked: int
+    first_invalid_id: int | None
+    reason: str | None = None
+
+
+class AuditLogOut(ORMModel):
+    id: int
+    created_at: datetime
+    action: str
+    actor: str | None
+    resource_type: str | None
+    resource_id: int | None
+    details: dict | None
+    ip_address: str | None
+    user_agent: str | None
+    request_id: str | None
 
 
 class ArtistCreate(BaseModel):

@@ -106,6 +106,19 @@ def test_login_rate_limit_returns_429(client, admin_headers, monkeypatch):
     assert r.status_code == 429
 
 
+def test_refresh_rate_limit_returns_429(client, admin_headers, monkeypatch):
+    from app.config import settings
+
+    monkeypatch.setattr(settings, "refresh_rate_limit", "3 per minute")
+    token = login(client, "admin", "AdminPass123").json()["refresh_token"]
+    for _ in range(3):
+        r = client.post("/auth/refresh", json={"refresh_token": token})
+        assert r.status_code == 200, r.text
+        token = r.json()["refresh_token"]
+    r = client.post("/auth/refresh", json={"refresh_token": token})
+    assert r.status_code == 429
+
+
 def test_me_requires_token(client):
     r = client.get("/auth/me")
     assert r.status_code == 401

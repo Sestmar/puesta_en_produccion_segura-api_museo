@@ -1,106 +1,175 @@
-# Museum API
+# API de Museo
 
-REST API for a museum catalog built with FastAPI, designed with security best practices in mind (JWT authentication, role-based access control, rate limiting, strict input validation).
+API REST para un catálogo de museo construida con FastAPI, diseñada siguiendo buenas prácticas de seguridad (autenticación JWT, control de acceso basado en roles, limitación de tasa y validación estricta de entradas).
 
-## Features
+## Características
 
-- **Entities**: artists, rooms, artworks (with relationships and referential integrity)
-- **Authentication**: OAuth2 password flow with JWT bearer tokens (30 min expiry)
-- **Authorization**: `admin` role for writes, `viewer` role for reads; unauthenticated users can browse the catalog
-- **Password security**: bcrypt hashing with per-password salt and complexity policy (8+ chars, letter + digit)
-- **Brute-force protection**: rate limiting on `/auth/login` (default 5 attempts per minute per IP)
-- **No user enumeration**: identical generic error for wrong username and wrong password
-- **Strict input validation**: Pydantic schemas (lengths, ranges, formats, cross-resource references)
-- **Security headers**: `X-Content-Type-Options`, `X-Frame-Options`, `Referrer-Policy`, `Cross-Origin-Opener-Policy` (plus HSTS in production)
-- **CORS**: restricted to configured origins
-- **Secrets** via environment variables (`.env`), never hardcoded; startup fails in production if the secret is missing or weak
-- **Interactive docs** at `/docs` (Swagger UI) and `/redoc`
+- **Entidades**: artistas, salas y obras (con relaciones e integridad referencial)
+- **Autenticación**: flujo de contraseña OAuth2 con tokens de acceso JWT ligados a la sesión (expiración de 30 min; revocar la sesión —logout, revocación explícita o detección de reuso— los invalida al instante) y refresh tokens con estado (rotación, detección de reuso y sesiones revocables)
+- **Autorización**: rol `admin` para escrituras, rol `viewer` para lecturas; los usuarios no autenticados pueden explorar el catálogo
+- **Gestión de usuarios** (solo admin): `GET /users` para listar, y `PATCH /users/{id}` para cambiar el rol o activar/desactivar una cuenta. Desactivar una cuenta revoca sus sesiones en el acto y bloquea el login (con el mismo error genérico, sin revelar el motivo); un admin no puede modificarse a sí mismo, lo que evita el auto-bloqueo
+- **Cambio de contraseña**: `PUT /auth/password` exige la contraseña actual, aplica la misma política de complejidad y revoca todas las sesiones del usuario para forzar el re-login en todos sus dispositivos
+- **Sesiones**: `GET`/`DELETE /auth/sessions` listan y **cierran todas** las sesiones del solicitante (cerrar todas invalida también la del propio solicitante); `DELETE /auth/sessions/{id}` revoca una puntual. Las sesiones activas por usuario están acotadas (`MAX_SESSIONS_PER_USER`, por defecto 10): al superarlo se revocan las más antiguas al iniciar una nueva sesión
+- **Seguridad de contraseñas**: hash bcrypt con sal por contraseña y política de complejidad (8+ caracteres, una letra y un dígito)
+- **Protección contra fuerza bruta**: limitación de tasa en `/auth/login` (por defecto 5 solicitudes por minuto por IP), en `/auth/refresh` (`REFRESH_RATE_LIMIT`, por defecto 20/min) **y** bloqueo de cuenta tras `max_failed_attempts` (por defecto 5) fallos consecutivos, con desbloqueo automático después de `lockout_minutes` (por defecto 15)
+- **Límite de tasa global**: límite por IP en todas las rutas (por defecto `DEFAULT_RATE_LIMIT`), con `/health` y `/health/ready` exentos; la IP del cliente se resuelve de forma consciente del proxy (`TRUSTED_PROXIES`) y el almacenamiento es configurable (`RATELIMIT_STORAGE_URI`, p. ej. Redis) para despliegues multi-worker/multi-réplica
+- **Sin enumeración de usuarios**: mismo error genérico tanto para usuario incorrecto como para contraseña incorrecta
+- **Validación estricta de entradas**: esquemas Pydantic (longitudes, rangos, formatos y referencias entre recursos)
+- **Cabeceras de seguridad**: `X-Content-Type-Options`, `X-Frame-Options`, `Referrer-Policy`, `Cross-Origin-Opener-Policy`, una `Content-Security-Policy` restrictiva por defecto (configurable mediante `CONTENT_SECURITY_POLICY`) y HSTS en producción
+- **Redirección a HTTPS**: con `FORCE_HTTPS=true`, las peticiones HTTP responden `307` hacia HTTPS, respetando `X-Forwarded-Proto` cuando hay un proxy que termina TLS delante
+- **CORS**: restringido a los orígenes configurados
+- **Secretos** mediante variables de entorno (`.env`), nunca codificados en duro; el arranque falla en producción si el secreto falta o es débil
+- **Registro estructurado**: logs JSON de una sola línea con un id por solicitud (`X-Request-ID`, autogenerado o propagado), método, ruta, estado y duración
+- **Sondas de estado**: `/health` (liveness) y `/health/ready` (readiness, comprueba la base de datos)
+- **Registro de auditoría (a prueba de manipulación)**: cada evento de autenticación (registro, inicio de sesión correcto o fallido, bloqueo, refresh, cierre de sesión y revocación de sesión) y cada operación de escritura (crear/actualizar/eliminar) queda registrado en `audit_logs` con el actor, el recurso, la IP, el user-agent y el `request_id` correlacionado; las credenciales nunca se registran. Cada entrada se encadena con la anterior mediante un HMAC-SHA256 (clave `SECRET_KEY`), de modo que alterar, borrar, reordenar o insertar filas directamente en la base de datos rompe la cadena y queda detectado por `GET /audit/verify` (solo admin). Con `AUDIT_ANCHOR_PATH` definido, la cabecera de la cadena se escribe además en un archivo externo firmado, de modo que el **truncado de la cola** (que la cadena por sí sola no puede detectar) también queda detectado. El registro puede consultarse con `GET /audit` (solo admin)
+- **Documentación interactiva** en `/docs` (Swagger UI) y `/redoc`
+- **Retención**: `python -m app.retention` elimina sesiones expiradas o revocadas hace más de `SESSION_RETENTION_DAYS` días y, si `AUDIT_RETENTION_DAYS` > 0, entradas de auditoría más antiguas que ese número de días. Podar la auditoría mueve el génesis de la cadena: se guarda un `checkpoint` firmado del último registro eliminado para que `GET /audit/verify` siga validando el tramo restante (0 desactiva la poda de auditoría y conserva todo el histórico)
 
-## Tech stack
+## Stack tecnológico
 
-FastAPI, SQLAlchemy 2.0, SQLite (swappable to PostgreSQL via `DATABASE_URL`), Pydantic v2, PyJWT, bcrypt, slowapi, pytest.
+FastAPI, SQLAlchemy 2.0, PostgreSQL mediante `psycopg` (SQLite para desarrollo local y pruebas), migraciones con Alembic, Pydantic v2, PyJWT, bcrypt, slowapi, pytest y Docker.
 
-## Setup
+## Puesta en marcha
+
+### Opción A — Docker (PostgreSQL, recomendado)
+
+```bash
+docker compose up --build
+```
+
+Esto inicia PostgreSQL y la API, aplica las migraciones de Alembic automáticamente y expone
+la API en `http://127.0.0.1:8000`. Los datos de Postgres persisten en el volumen `pgdata`.
+
+### Opción B — Local (SQLite)
 
 ```bash
 python -m venv .venv
 .venv\Scripts\activate          # Windows
-pip install -r requirements.txt
-copy .env.example .env          # Windows (or: cp .env.example .env)
-# edit .env and set a strong SECRET_KEY
+pip install -r requirements-dev.txt
+copy .env.example .env          # Windows (o: cp .env.example .env)
+# edita .env y define un SECRET_KEY fuerte
+alembic upgrade head            # crea el esquema
 uvicorn app.main:app --reload
 ```
 
-API base: `http://127.0.0.1:8000` — docs: `http://127.0.0.1:8000/docs`
+Base de la API: `http://127.0.0.1:8000` — docs: `http://127.0.0.1:8000/docs`
 
-## Running tests
+## Migraciones de base de datos (Alembic)
+
+El esquema está versionado con Alembic; la aplicación **no** crea las tablas al arrancar.
 
 ```bash
+alembic upgrade head                            # aplica todas las migraciones
+alembic revision --autogenerate -m "message"    # genera una migración a partir de cambios en los modelos
+alembic downgrade -1                            # revierte una migración
+alembic current                                 # muestra la revisión aplicada
+```
+
+## Ejecución de pruebas
+
+```bash
+pip install -r requirements-dev.txt
 pytest
 ```
 
-The suite covers authentication, RBAC, validation, rate limiting, referential integrity and security headers.
+La suite cubre autenticación, RBAC, validación, limitación de tasa, integridad referencial y cabeceras de seguridad.
 
-## Authentication flow
+## Flujo de autenticación
 
-The **first** registered user automatically becomes `admin` (bootstrap). After that, registration requires an admin token.
+El **primer** usuario registrado se convierte automáticamente en `admin` (inicialización). A partir de ahí, el registro requiere un token de admin.
 
 ```bash
-# 1. Bootstrap admin (only works while the database has no users)
+# 1. Crear el admin inicial (solo funciona mientras la base de datos no tenga usuarios)
 curl -X POST http://127.0.0.1:8000/auth/register ^
   -H "Content-Type: application/json" ^
   -d "{\"username\":\"admin\",\"password\":\"AdminPass123\"}"
 
-# 2. Login and grab the token
+# 2. Iniciar sesión y obtener los tokens
 curl -X POST http://127.0.0.1:8000/auth/login ^
   -H "Content-Type: application/x-www-form-urlencoded" ^
   -d "username=admin&password=AdminPass123"
 
-# 3. Create a resource (admin only)
+# 3. Crear un recurso (solo admin)
 curl -X POST http://127.0.0.1:8000/artists ^
   -H "Authorization: Bearer <TOKEN>" ^
   -H "Content-Type: application/json" ^
   -d "{\"name\":\"Frida Kahlo\",\"nationality\":\"Mexican\",\"birth_year\":1907}"
 ```
 
+`/auth/login` devuelve `access_token` y `refresh_token`. Los refresh tokens son sesiones revocables del lado del servidor:
+`POST /auth/refresh` rota el token (reutilizar un token ya rotado revoca todas las sesiones del usuario),
+`POST /auth/logout` revoca un token, y `GET`/`DELETE /auth/sessions` lista y revoca las sesiones activas.
+
 ## Endpoints
 
-| Method | Path | Auth | Description |
+| Método | Ruta | Autenticación | Descripción |
 |---|---|---|---|
-| POST | `/auth/register` | admin (open on empty DB) | Create user |
-| POST | `/auth/login` | public (rate limited) | Get JWT |
-| GET | `/auth/me` | bearer | Current user |
-| GET | `/artists`, `/rooms`, `/artworks` | public | List (paginated, filterable) |
-| GET | `/artists/{id}`, `/rooms/{id}`, `/artworks/{id}` | public | Detail (404 if missing) |
-| POST | `/artists`, `/rooms`, `/artworks` | admin | Create (201) |
-| PUT | `/artists/{id}`, `/rooms/{id}`, `/artworks/{id}` | admin | Partial update |
-| DELETE | `/artists/{id}`, `/rooms/{id}`, `/artworks/{id}` | admin | Delete (204) |
-| GET | `/health` | public | Liveness check |
+| POST | `/auth/register` | admin (abierto con la base de datos vacía) | Crear usuario |
+| POST | `/auth/login` | público (con límite de tasa) | Obtener tokens de acceso y refresh |
+| POST | `/auth/refresh` | público | Rotar un refresh token (emite un par nuevo) |
+| POST | `/auth/logout` | público | Revocar el refresh token indicado |
+| DELETE | `/auth/sessions` | bearer | Cerrar todas las sesiones del solicitante (204) |
+| GET | `/auth/sessions` | bearer | Listar las sesiones activas del solicitante |
+| DELETE | `/auth/sessions/{id}` | bearer | Revocar una sesión (solo el propietario, 204) |
+| GET | `/auth/me` | bearer | Usuario actual |
+| PUT | `/auth/password` | bearer | Cambiar la contraseña (revoca todas las sesiones) |
+| GET | `/users` | admin | Listar usuarios |
+| PATCH | `/users/{id}` | admin | Cambiar rol o activar/desactivar una cuenta |
+| GET | `/audit` | admin | Consultar el registro de auditoría (filtros por acción/actor/request_id; más reciente primero) |
+| GET | `/audit/verify` | admin | Recalcular la cadena de auditoría y reportar el primer registro alterado |
+| GET | `/artists`, `/rooms`, `/artworks` | público | Listar (paginado, filtrable) |
+| GET | `/artists/{id}`, `/rooms/{id}`, `/artworks/{id}` | público | Detalle (404 si no existe) |
+| POST | `/artists`, `/rooms`, `/artworks` | admin | Crear (201) |
+| PUT | `/artists/{id}`, `/rooms/{id}`, `/artworks/{id}` | admin | Actualización parcial |
+| DELETE | `/artists/{id}`, `/rooms/{id}`, `/artworks/{id}` | admin | Eliminar (204) |
+| GET | `/health` | público | Comprobación de liveness (sin acceso a la base de datos) |
+| GET | `/health/ready` | público | Comprobación de readiness (consulta la base de datos; 503 si está caída) |
 
-List query params: `skip`, `limit` (max 100); artworks also accept `artist_id` and `room_id` filters.
+Parámetros de consulta del listado: `skip`, `limit` (máximo 100); las obras también aceptan los filtros `artist_id` y `room_id`.
 
-Deleting an artist or room that still has artworks returns `409 Conflict`.
+Eliminar un artista o una sala que todavía tiene obras devuelve `409 Conflict`.
 
-## Project structure
+## Estructura del proyecto
 
 ```
 app/
-  main.py         FastAPI app, middleware, CORS, rate-limit handler
-  config.py       Settings from environment (.env)
-  database.py     Engine, session, SQLite FK pragma
-  models.py       SQLAlchemy models (users, artists, rooms, artworks)
-  schemas.py      Pydantic validation schemas
-  security.py     bcrypt hashing + JWT creation/verification
-  deps.py         Auth dependencies (get_current_user, require_admin)
-  ratelimit.py    slowapi limiter instance
-  middleware.py   Security headers
-  routers/        auth, artists, rooms, artworks
-tests/            59 tests (auth, RBAC, CRUD, limits, headers)
+  main.py         Aplicación FastAPI, middleware, CORS y manejador de límite de tasa
+  config.py       Configuración desde variables de entorno (.env)
+  database.py     Engine, sesión y pragma de FK para SQLite
+  models.py       Modelos SQLAlchemy (users, auth_sessions, audit_logs, artists, rooms, artworks)
+  schemas.py      Esquemas de validación Pydantic
+  security.py     Hash bcrypt + creación/verificación de JWT
+  deps.py         Dependencias de autenticación (get_current_user, require_admin)
+  audit.py        Helper de AuditLog (acción, actor, recurso, request id) + cadena de hash tamper-evident
+  anchor.py       Anclaje externo de la cabecera de la cadena (archivo firmado) para detectar truncado
+  checkpoint.py   Checkpoint firmado del último registro podado (mantiene verificable la cadena tras retención)
+  retention.py    Limpieza de sesiones expiradas/revocadas y de auditoría antigua (python -m app.retention)
+  ratelimit.py    Instancia del limitador de slowapi
+  logging_config.py  Formateador JSON + contexto de request-id + configuración de logging
+  middleware.py   Cabeceras de seguridad + contexto de solicitud (request id, log de acceso)
+  routers/        health, auth, users, audit, artists, rooms, artworks
+alembic/          Entorno de migraciones + scripts versionados (env.py, versions/)
+alembic.ini       Configuración de Alembic (la URL se sobrescribe desde la configuración de la app)
+Dockerfile        Imagen multietapa (builder + runtime slim, usuario no root)
+docker-compose.yml  API + PostgreSQL con healthchecks
+requirements.txt      Dependencias de runtime
+requirements-dev.txt  Dependencias de runtime + pruebas
+tests/            178 pruebas (auth, RBAC, sesiones, tope de sesiones, revocación de token, bloqueo, cambio de contraseña, gestión de usuarios, auditoría, consulta de auditoría, cadena de hash, ancla externa, retención, cabeceras y CSP, redirección HTTPS, límite de tasa global, proxy-aware, CRUD, límites)
+.github/workflows/ci.yml  CI: pruebas, pip-audit y gitleaks
 ```
 
-## Production notes
+## Notas de producción
 
-- Run behind TLS (HTTPS): tokens are bearer credentials and must never travel over plain HTTP.
-- Set `ENVIRONMENT=production`, a strong `SECRET_KEY` (32+ random bytes) and real `CORS_ORIGINS`.
-- Swap `DATABASE_URL` to PostgreSQL for a real deployment.
-- Keep `uvicorn` behind a reverse proxy (nginx/Caddy) that also enforces HTTPS and request size limits.
+- Despliega detrás de TLS (HTTPS): los tokens son credenciales bearer y nunca deben viajar por HTTP en claro.
+- Define `ENVIRONMENT=production`, un `SECRET_KEY` fuerte (32+ bytes aleatorios) y `CORS_ORIGINS` reales. El `SECRET_KEY` también es la clave de la cadena de auditoría: rotarlo invalida la verificación de las entradas anteriores, así que re-encadena (`GET /audit/verify` fallará como advertencia) o conserva el valor previo si necesitas verificar el histórico.
+- Define `AUDIT_ANCHOR_PATH` apuntando a un archivo fuera de la base de datos (idealmente en un volumen/permisos separados) para detectar el truncado de la cola de auditoría. Si el atacante controla tanto la base como el archivo de ancla, ninguna de las dos protecciones alcanza: el ancla es defensa en profundidad, no una garantía.
+- Programa `python -m app.retention` (cron/timer/CronJob) para evitar que `auth_sessions` y `audit_logs` crezcan sin límite. Para auditoría, si necesitas conservarla indefinidamente, dejá `AUDIT_RETENTION_DAYS=0` y exportá los registros a un almacén externo en vez de podarlos.
+- Con `ENVIRONMENT=production`, `/docs`, `/redoc` y `/openapi.json` quedan ocultos (responden 404).
+- Apunta `DATABASE_URL` a PostgreSQL (`postgresql+psycopg://user:pass@host:5432/db`).
+- Aplica las migraciones al desplegar con `alembic upgrade head` (el servicio de compose lo hace al arrancar).
+- Sustituye las credenciales de `POSTGRES_*` y el `SECRET_KEY` del `.env` antes de desplegar: `docker-compose.yml` no arranca sin `POSTGRES_PASSWORD` ni `SECRET_KEY` definidos, y en producción el arranque rechaza el `SECRET_KEY` de ejemplo.
+- Con `FORCE_HTTPS=true` (detrás del proxy que termina TLS) la API redirige HTTP → HTTPS. Ajustá `CONTENT_SECURITY_POLICY` si servís la UI de Swagger en un entorno donde `/docs` es accesible; la política estricta por defecto la bloquea.
+- El CI (`.github/workflows/ci.yml`) corre las pruebas, `pip-audit` sobre las dependencias y un escaneo de secretos con gitleaks en cada push/PR.
+- El `docker-compose.yml` levanta Redis y apunta `RATELIMIT_STORAGE_URI` a él, de modo que el límite de tasa se comparte entre los workers del mismo servicio; en memoria (por proceso) es sólo para desarrollo local.
+- Detrás de un proxy inverso, define `TRUSTED_PROXIES` con las IPs del proxy cuyo `X-Forwarded-For` haya que confiar, para que el límite de tasa y los logs vean la IP real del cliente.
+- Mantén `uvicorn` detrás de un proxy inverso (nginx/Caddy) que también aplique HTTPS y límites de tamaño de solicitud.

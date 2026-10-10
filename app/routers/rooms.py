@@ -1,10 +1,11 @@
 from typing import Annotated
 
-from fastapi import APIRouter, Depends, HTTPException, Query, Response, status
+from fastapi import APIRouter, Depends, HTTPException, Query, Request, Response, status
 from sqlalchemy import func, select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
+from app.audit import AuditAction, record_event
 from app.database import get_db
 from app.deps import require_admin
 from app.models import Artwork, Room, User
@@ -44,7 +45,8 @@ def get_room(
 def create_room(
     payload: RoomCreate,
     db: Annotated[Session, Depends(get_db)],
-    _: Annotated[User, Depends(require_admin)],
+    current_user: Annotated[User, Depends(require_admin)],
+    request: Request,
 ):
     room = Room(**payload.model_dump())
     db.add(room)
@@ -57,6 +59,15 @@ def create_room(
             detail="Room name already exists",
         )
     db.refresh(room)
+    record_event(
+        db,
+        action=AuditAction.CREATE,
+        actor=current_user.username,
+        resource_type="room",
+        resource_id=room.id,
+        details={"name": room.name},
+        request=request,
+    )
     return room
 
 
@@ -65,7 +76,8 @@ def update_room(
     room_id: int,
     payload: RoomUpdate,
     db: Annotated[Session, Depends(get_db)],
-    _: Annotated[User, Depends(require_admin)],
+    current_user: Annotated[User, Depends(require_admin)],
+    request: Request,
 ):
     room = _get_or_404(room_id, db)
     for field, value in payload.model_dump(exclude_unset=True).items():
@@ -79,6 +91,15 @@ def update_room(
             detail="Room name already exists",
         )
     db.refresh(room)
+    record_event(
+        db,
+        action=AuditAction.UPDATE,
+        actor=current_user.username,
+        resource_type="room",
+        resource_id=room.id,
+        details={"name": room.name},
+        request=request,
+    )
     return room
 
 
@@ -86,7 +107,8 @@ def update_room(
 def delete_room(
     room_id: int,
     db: Annotated[Session, Depends(get_db)],
-    _: Annotated[User, Depends(require_admin)],
+    current_user: Annotated[User, Depends(require_admin)],
+    request: Request,
 ):
     room = _get_or_404(room_id, db)
     artwork_count = db.scalar(
@@ -101,4 +123,13 @@ def delete_room(
         )
     db.delete(room)
     db.commit()
+    record_event(
+        db,
+        action=AuditAction.DELETE,
+        actor=current_user.username,
+        resource_type="room",
+        resource_id=room_id,
+        details={"name": room.name},
+        request=request,
+    )
     return Response(status_code=status.HTTP_204_NO_CONTENT)

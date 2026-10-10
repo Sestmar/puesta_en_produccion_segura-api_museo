@@ -1,10 +1,11 @@
 from typing import Annotated
 
-from fastapi import APIRouter, Depends, HTTPException, Query, Response, status
+from fastapi import APIRouter, Depends, HTTPException, Query, Request, Response, status
 from sqlalchemy import select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
+from app.audit import AuditAction, record_event
 from app.database import get_db
 from app.deps import require_admin
 from app.models import Artist, Artwork, Room, User
@@ -67,7 +68,8 @@ def get_artwork(
 def create_artwork(
     payload: ArtworkCreate,
     db: Annotated[Session, Depends(get_db)],
-    _: Annotated[User, Depends(require_admin)],
+    current_user: Annotated[User, Depends(require_admin)],
+    request: Request,
 ):
     _validate_references(db, payload.artist_id, payload.room_id)
     artwork = Artwork(**payload.model_dump())
@@ -81,6 +83,15 @@ def create_artwork(
             detail="Invalid artist or room reference",
         )
     db.refresh(artwork)
+    record_event(
+        db,
+        action=AuditAction.CREATE,
+        actor=current_user.username,
+        resource_type="artwork",
+        resource_id=artwork.id,
+        details={"title": artwork.title},
+        request=request,
+    )
     return artwork
 
 
@@ -89,7 +100,8 @@ def update_artwork(
     artwork_id: int,
     payload: ArtworkUpdate,
     db: Annotated[Session, Depends(get_db)],
-    _: Annotated[User, Depends(require_admin)],
+    current_user: Annotated[User, Depends(require_admin)],
+    request: Request,
 ):
     artwork = _get_or_404(artwork_id, db)
     changes = payload.model_dump(exclude_unset=True)
@@ -107,6 +119,15 @@ def update_artwork(
             detail="Invalid artist or room reference",
         )
     db.refresh(artwork)
+    record_event(
+        db,
+        action=AuditAction.UPDATE,
+        actor=current_user.username,
+        resource_type="artwork",
+        resource_id=artwork.id,
+        details={"title": artwork.title},
+        request=request,
+    )
     return artwork
 
 
@@ -114,9 +135,19 @@ def update_artwork(
 def delete_artwork(
     artwork_id: int,
     db: Annotated[Session, Depends(get_db)],
-    _: Annotated[User, Depends(require_admin)],
+    current_user: Annotated[User, Depends(require_admin)],
+    request: Request,
 ):
     artwork = _get_or_404(artwork_id, db)
     db.delete(artwork)
     db.commit()
+    record_event(
+        db,
+        action=AuditAction.DELETE,
+        actor=current_user.username,
+        resource_type="artwork",
+        resource_id=artwork_id,
+        details={"title": artwork.title},
+        request=request,
+    )
     return Response(status_code=status.HTTP_204_NO_CONTENT)

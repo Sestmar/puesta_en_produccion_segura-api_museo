@@ -27,21 +27,25 @@ def test_verify_password_with_corrupted_hash_does_not_raise():
 
 
 def test_create_and_decode_token():
-    token = create_access_token(subject="alice", role="admin")
+    token = create_access_token(subject="alice", role="admin", session_id=7)
     payload = decode_token(token)
     assert payload["sub"] == "alice"
     assert payload["role"] == "admin"
+    assert payload["sid"] == 7
 
 
 def test_expired_token_raises():
     token = create_access_token(
-        subject="alice", role="viewer", expires_delta=timedelta(seconds=-1)
+        subject="alice",
+        role="viewer",
+        session_id=1,
+        expires_delta=timedelta(seconds=-1),
     )
     with pytest.raises(jwt.ExpiredSignatureError):
         decode_token(token)
 
 
 def test_tampered_token_raises():
-    token = create_access_token(subject="alice", role="viewer")
+    token = create_access_token(subject="alice", role="viewer", session_id=1)
     with pytest.raises(jwt.InvalidTokenError):
         decode_token(token + "tampered")

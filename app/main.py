@@ -5,23 +5,23 @@ from fastapi.middleware.cors import CORSMiddleware
 from slowapi import _rate_limit_exceeded_handler
 from slowapi.errors import RateLimitExceeded
 
-from app.config import settings
-from app.database import Base, engine
-from app.middleware import SecurityHeadersMiddleware
-from app.ratelimit import limiter
-from app.routers import artworks, artists, auth, rooms
+from app.config import settings, validate_secret_key
+from app.logging_config import configure_logging
+from app.middleware import (
+    HTTPSRedirectMiddleware,
+    ProductionDocsMiddleware,
+    RequestContextMiddleware,
+    SecurityHeadersMiddleware,
+)
+from app.ratelimit import RateLimitMiddleware, limiter
+from app.routers import artworks, artists, audit, auth, health, rooms, users
+
+configure_logging(settings.log_level)
 
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    if settings.environment == "production":
-        if settings.secret_key == "insecure-dev-secret-change-me":
-            raise RuntimeError(
-                "SECRET_KEY must be set to a custom value in production"
-            )
-        if len(settings.secret_key.encode("utf-8")) < 32:
-            raise RuntimeError("SECRET_KEY must be at least 32 bytes in production")
-    Base.metadata.create_all(bind=engine)
+    validate_secret_key(settings.secret_key, settings.environment)
     yield
 
 
@@ -46,14 +46,16 @@ app.add_middleware(
     allow_methods=["GET", "POST", "PUT", "DELETE"],
     allow_headers=["Authorization", "Content-Type"],
 )
+app.add_middleware(HTTPSRedirectMiddleware)
 app.add_middleware(SecurityHeadersMiddleware)
+app.add_middleware(RequestContextMiddleware)
+app.add_middleware(RateLimitMiddleware)
+app.add_middleware(ProductionDocsMiddleware)
 
+app.include_router(health.router)
 app.include_router(auth.router)
+app.include_router(audit.router)
+app.include_router(users.router)
 app.include_router(artists.router)
 app.include_router(rooms.router)
 app.include_router(artworks.router)
-
-
-@app.get("/health", tags=["system"])
-def health_check():
-    return {"status": "ok"}

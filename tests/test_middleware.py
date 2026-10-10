@@ -4,12 +4,55 @@ def test_health_endpoint(client):
     assert r.json() == {"status": "ok"}
 
 
+def test_request_id_header_is_generated(client):
+    r = client.get("/health")
+    assert r.headers.get("X-Request-ID")
+
+
+def test_request_id_header_is_propagated(client):
+    r = client.get("/health", headers={"X-Request-ID": "trace-abc-123"})
+    assert r.headers.get("X-Request-ID") == "trace-abc-123"
+
+
 def test_security_headers_present(client):
     r = client.get("/health")
     assert r.headers["X-Content-Type-Options"] == "nosniff"
     assert r.headers["X-Frame-Options"] == "DENY"
     assert r.headers["Referrer-Policy"] == "no-referrer"
     assert r.headers["Cross-Origin-Opener-Policy"] == "same-origin"
+
+
+def test_content_security_policy_present(client):
+    r = client.get("/health")
+    policy = r.headers["Content-Security-Policy"]
+    assert "default-src 'none'" in policy
+    assert "frame-ancestors 'none'" in policy
+
+
+def test_https_redirect_disabled_by_default(client):
+    r = client.get("/health", follow_redirects=False)
+    assert r.status_code == 200
+
+
+def test_https_redirect_when_enabled(client, monkeypatch):
+    from app.config import settings
+
+    monkeypatch.setattr(settings, "force_https", True)
+    r = client.get("/health", follow_redirects=False)
+    assert r.status_code in (307, 308)
+    assert r.headers["location"].startswith("https://")
+
+
+def test_https_redirect_respects_forwarded_proto(client, monkeypatch):
+    from app.config import settings
+
+    monkeypatch.setattr(settings, "force_https", True)
+    r = client.get(
+        "/health",
+        headers={"X-Forwarded-Proto": "https"},
+        follow_redirects=False,
+    )
+    assert r.status_code == 200
 
 
 def test_hsts_header_absent_outside_production(client):

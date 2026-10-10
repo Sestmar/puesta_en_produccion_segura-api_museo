@@ -1,9 +1,10 @@
 from typing import Annotated
 
-from fastapi import APIRouter, Depends, HTTPException, Query, Response, status
+from fastapi import APIRouter, Depends, HTTPException, Query, Request, Response, status
 from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
+from app.audit import AuditAction, record_event
 from app.database import get_db
 from app.deps import require_admin
 from app.models import Artist, Artwork, User
@@ -47,12 +48,22 @@ def get_artist(
 def create_artist(
     payload: ArtistCreate,
     db: Annotated[Session, Depends(get_db)],
-    _: Annotated[User, Depends(require_admin)],
+    current_user: Annotated[User, Depends(require_admin)],
+    request: Request,
 ):
     artist = Artist(**payload.model_dump())
     db.add(artist)
     db.commit()
     db.refresh(artist)
+    record_event(
+        db,
+        action=AuditAction.CREATE,
+        actor=current_user.username,
+        resource_type="artist",
+        resource_id=artist.id,
+        details={"name": artist.name},
+        request=request,
+    )
     return artist
 
 
@@ -61,13 +72,23 @@ def update_artist(
     artist_id: int,
     payload: ArtistUpdate,
     db: Annotated[Session, Depends(get_db)],
-    _: Annotated[User, Depends(require_admin)],
+    current_user: Annotated[User, Depends(require_admin)],
+    request: Request,
 ):
     artist = _get_or_404(artist_id, db)
     for field, value in payload.model_dump(exclude_unset=True).items():
         setattr(artist, field, value)
     db.commit()
     db.refresh(artist)
+    record_event(
+        db,
+        action=AuditAction.UPDATE,
+        actor=current_user.username,
+        resource_type="artist",
+        resource_id=artist.id,
+        details={"name": artist.name},
+        request=request,
+    )
     return artist
 
 
@@ -75,7 +96,8 @@ def update_artist(
 def delete_artist(
     artist_id: int,
     db: Annotated[Session, Depends(get_db)],
-    _: Annotated[User, Depends(require_admin)],
+    current_user: Annotated[User, Depends(require_admin)],
+    request: Request,
 ):
     artist = _get_or_404(artist_id, db)
     artwork_count = db.scalar(
@@ -90,4 +112,13 @@ def delete_artist(
         )
     db.delete(artist)
     db.commit()
+    record_event(
+        db,
+        action=AuditAction.DELETE,
+        actor=current_user.username,
+        resource_type="artist",
+        resource_id=artist_id,
+        details={"name": artist.name},
+        request=request,
+    )
     return Response(status_code=status.HTTP_204_NO_CONTENT)
