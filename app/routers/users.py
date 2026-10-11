@@ -1,20 +1,20 @@
 from typing import Annotated
 
 from fastapi import APIRouter, Depends, HTTPException, Query, Request, status
-from sqlalchemy import select
+from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
 from app.audit import AuditAction, record_event
 from app.database import get_db
 from app.deps import require_admin
 from app.models import User
-from app.schemas import UserOut, UserUpdate
+from app.schemas import PageResult, UserOut, UserUpdate
 from app.sessions import revoke_all_for_user
 
 router = APIRouter(prefix="/users", tags=["users"])
 
 
-@router.get("", response_model=list[UserOut])
+@router.get("", response_model=PageResult[UserOut])
 def list_users(
     current_user: Annotated[User, Depends(require_admin)],
     db: Annotated[Session, Depends(get_db)],
@@ -22,7 +22,9 @@ def list_users(
     limit: Annotated[int, Query(ge=1, le=100)] = 50,
 ):
     statement = select(User).order_by(User.id).offset(skip).limit(limit)
-    return db.scalars(statement).all()
+    total = db.scalar(select(func.count()).select_from(User)) or 0
+    items = db.scalars(statement).all()
+    return {"items": items, "total": total, "skip": skip, "limit": limit}
 
 
 @router.patch("/{user_id}", response_model=UserOut)

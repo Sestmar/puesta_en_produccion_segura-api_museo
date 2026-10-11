@@ -6,8 +6,10 @@ def test_list_artists_is_public(client, admin_headers):
     )
     r = client.get("/artists")
     assert r.status_code == 200
-    assert len(r.json()) == 1
-    assert r.json()[0]["name"] == "Frida Kahlo"
+    data = r.json()
+    assert data["total"] == 1
+    assert len(data["items"]) == 1
+    assert data["items"][0]["name"] == "Frida Kahlo"
 
 
 def test_create_artist_without_token_returns_401(client):

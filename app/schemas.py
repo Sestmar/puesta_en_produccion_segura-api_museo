@@ -206,3 +206,10 @@ class ArtworkOut(ORMModel):
     description: str | None
     artist_id: int
     room_id: int | None
+
+
+class PageResult[T](BaseModel):
+    items: list[T]
+    total: int
+    skip: int
+    limit: int

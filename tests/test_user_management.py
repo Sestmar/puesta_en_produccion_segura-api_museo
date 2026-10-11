@@ -9,9 +9,10 @@ def test_list_users_requires_admin(client, admin_headers, viewer_headers):
     assert client.get("/users", headers=viewer_headers).status_code == 403
     r = client.get("/users", headers=admin_headers)
     assert r.status_code == 200
-    usernames = {user["username"] for user in r.json()}
+    data = r.json()
+    usernames = {user["username"] for user in data["items"]}
     assert {"admin", "viewer"} <= usernames
-    assert all("is_active" in user for user in r.json())
+    assert all("is_active" in user for user in data["items"])
 
 
 def test_update_role_takes_effect_immediately(client, admin_headers, viewer_headers):

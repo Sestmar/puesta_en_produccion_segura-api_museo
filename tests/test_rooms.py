@@ -10,7 +10,8 @@ def test_rooms_crud_happy_path(client, admin_headers):
 
     listing = client.get("/rooms")
     assert listing.status_code == 200
-    assert len(listing.json()) == 1
+    assert listing.json()["total"] == 1
+    assert len(listing.json()["items"]) == 1
 
     updated = client.put(
         f"/rooms/{room['id']}",

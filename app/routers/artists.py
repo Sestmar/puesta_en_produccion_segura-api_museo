@@ -8,7 +8,7 @@ from app.audit import AuditAction, record_event
 from app.database import get_db
 from app.deps import require_admin
 from app.models import Artist, Artwork, User
-from app.schemas import ArtistCreate, ArtistOut, ArtistUpdate
+from app.schemas import ArtistCreate, ArtistOut, ArtistUpdate, PageResult
 
 router = APIRouter(prefix="/artists", tags=["artists"])
 
@@ -22,14 +22,16 @@ def _get_or_404(artist_id: int, db: Session) -> Artist:
     return artist
 
 
-@router.get("", response_model=list[ArtistOut])
+@router.get("", response_model=PageResult[ArtistOut])
 def list_artists(
     db: Annotated[Session, Depends(get_db)],
     skip: Annotated[int, Query(ge=0)] = 0,
     limit: Annotated[int, Query(ge=1, le=100)] = 50,
 ):
     statement = select(Artist).order_by(Artist.id).offset(skip).limit(limit)
-    return db.scalars(statement).all()
+    total = db.scalar(select(func.count()).select_from(Artist)) or 0
+    items = db.scalars(statement).all()
+    return {"items": items, "total": total, "skip": skip, "limit": limit}
 
 
 @router.get("/{artist_id}", response_model=ArtistOut)

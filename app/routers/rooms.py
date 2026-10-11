@@ -9,7 +9,7 @@ from app.audit import AuditAction, record_event
 from app.database import get_db
 from app.deps import require_admin
 from app.models import Artwork, Room, User
-from app.schemas import RoomCreate, RoomOut, RoomUpdate
+from app.schemas import PageResult, RoomCreate, RoomOut, RoomUpdate
 
 router = APIRouter(prefix="/rooms", tags=["rooms"])
 
@@ -23,14 +23,16 @@ def _get_or_404(room_id: int, db: Session) -> Room:
     return room
 
 
-@router.get("", response_model=list[RoomOut])
+@router.get("", response_model=PageResult[RoomOut])
 def list_rooms(
     db: Annotated[Session, Depends(get_db)],
     skip: Annotated[int, Query(ge=0)] = 0,
     limit: Annotated[int, Query(ge=1, le=100)] = 50,
 ):
     statement = select(Room).order_by(Room.id).offset(skip).limit(limit)
-    return db.scalars(statement).all()
+    total = db.scalar(select(func.count()).select_from(Room)) or 0
+    items = db.scalars(statement).all()
+    return {"items": items, "total": total, "skip": skip, "limit": limit}
 
 
 @router.get("/{room_id}", response_model=RoomOut)

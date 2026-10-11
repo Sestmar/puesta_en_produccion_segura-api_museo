@@ -1,7 +1,7 @@
 from typing import Annotated
 
 from fastapi import APIRouter, Depends, HTTPException, Query, Request, Response, status
-from sqlalchemy import select
+from sqlalchemy import func, select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
@@ -9,7 +9,7 @@ from app.audit import AuditAction, record_event
 from app.database import get_db
 from app.deps import require_admin
 from app.models import Artist, Artwork, Room, User
-from app.schemas import ArtworkCreate, ArtworkOut, ArtworkUpdate
+from app.schemas import ArtworkCreate, ArtworkOut, ArtworkUpdate, PageResult
 
 router = APIRouter(prefix="/artworks", tags=["artworks"])
 
@@ -40,7 +40,7 @@ def _validate_references(
         )
 
 
-@router.get("", response_model=list[ArtworkOut])
+@router.get("", response_model=PageResult[ArtworkOut])
 def list_artworks(
     db: Annotated[Session, Depends(get_db)],
     artist_id: Annotated[int | None, Query(ge=1)] = None,
@@ -49,11 +49,16 @@ def list_artworks(
     limit: Annotated[int, Query(ge=1, le=100)] = 50,
 ):
     statement = select(Artwork).order_by(Artwork.id)
+    count_statement = select(func.count()).select_from(Artwork)
     if artist_id is not None:
         statement = statement.where(Artwork.artist_id == artist_id)
+        count_statement = count_statement.where(Artwork.artist_id == artist_id)
     if room_id is not None:
         statement = statement.where(Artwork.room_id == room_id)
-    return db.scalars(statement.offset(skip).limit(limit)).all()
+        count_statement = count_statement.where(Artwork.room_id == room_id)
+    total = db.scalar(count_statement) or 0
+    items = db.scalars(statement.offset(skip).limit(limit)).all()
+    return {"items": items, "total": total, "skip": skip, "limit": limit}
 
 
 @router.get("/{artwork_id}", response_model=ArtworkOut)

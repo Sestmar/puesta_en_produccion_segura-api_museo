@@ -84,15 +84,18 @@ def test_list_artworks_is_public_and_filterable(client, admin_headers):
 
     all_artworks = client.get("/artworks")
     assert all_artworks.status_code == 200
-    assert len(all_artworks.json()) == 2
+    assert all_artworks.json()["total"] == 2
+    assert len(all_artworks.json()["items"]) == 2
 
     filtered = client.get("/artworks", params={"room_id": room["id"]})
     assert filtered.status_code == 200
-    assert len(filtered.json()) == 1
-    assert filtered.json()[0]["title"] == "En sala agua"
+    assert filtered.json()["total"] == 1
+    assert len(filtered.json()["items"]) == 1
+    assert filtered.json()["items"][0]["title"] == "En sala agua"
 
     by_artist = client.get("/artworks", params={"artist_id": artist["id"]})
-    assert len(by_artist.json()) == 2
+    assert by_artist.json()["total"] == 2
+    assert len(by_artist.json()["items"]) == 2
 
 
 def test_get_artwork_returns_404_when_missing(client):
