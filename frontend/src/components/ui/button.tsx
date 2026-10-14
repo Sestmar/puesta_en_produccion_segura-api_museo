@@ -48,13 +48,17 @@ export const Button = forwardRef<HTMLButtonElement, ButtonProps>(
       <Component
         ref={ref}
         type={asChild ? undefined : type}
-        disabled={disabled || loading}
+        disabled={asChild ? undefined : disabled || loading}
         aria-busy={loading || undefined}
         className={cn(buttonVariants({ variant, size }), className)}
         {...props}
       >
-        {loading ? <Spinner /> : null}
-        {children}
+        {asChild ? children : (
+          <>
+            {loading ? <Spinner /> : null}
+            {children}
+          </>
+        )}
       </Component>
     );
   },
