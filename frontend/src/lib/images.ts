@@ -10,11 +10,13 @@ import type { Artist, Artwork, Room } from "@/lib/api/types";
  *   2. Si no (datos propios del museo) → elige una imagen estable por hash del
  *      título, de modo que la misma obra siempre muestra la misma imagen.
  *
+ * Las imágenes se descargan a `public/works/` (ver scripts/fetch-works.mjs) y se
+ * sirven localmente, evitando que el CDN de AIC bloquee el hotlinking desde
+ * dominios que no sean artic.edu.
+ *
  * Para cambiarlas por fotos propias: reemplazar `SOURCE_WORKS` por tu propio
- * conjunto (ver scripts/fetch-works.mjs).
+ * conjunto y guardar los archivos JPG en `public/works/{imageId}.jpg`.
  */
-
-const IIIF = "https://www.artic.edu/iiif/2";
 
 const FALLBACK_IMAGE_ID = "2d484387-2509-5e8e-2c43-22f9981972eb"; // A Sunday on La Grande Jatte
 
@@ -49,33 +51,34 @@ function sourceWorkFor(seed: string): SourceWork | undefined {
   return SOURCE_WORKS[hashString(seed) % SOURCE_WORKS.length];
 }
 
-/** URL de imagen IIIF, limitada por ancho (el recorte lo hace object-cover). */
-export function iiifUrl(imageId: string, width: number): string {
-  return `${IIIF}/${imageId}/full/${width},/0/default.jpg`;
+/** URL local de una imagen del catálogo. El ancho se ignora porque el asset
+ *  ya se descarga a una resolución suficiente (1600 px) y el CSS la escala. */
+export function localImageUrl(imageId: string): string {
+  return `/works/${imageId}.jpg`;
 }
 
 /** Imagen de una obra a partir de su título (determinista). */
-export function imageForArtwork(artwork: Pick<Artwork, "title">, width = 1200): string {
+export function imageForArtwork(artwork: Pick<Artwork, "title">, _width = 1200): string {
   const work = sourceWorkFor(artwork.title);
-  return iiifUrl(work?.imageId ?? FALLBACK_IMAGE_ID, width);
+  return localImageUrl(work?.imageId ?? FALLBACK_IMAGE_ID);
 }
 
 /** Imagen para un artista (retrato/obra representativa). */
-export function imageForArtist(artist: Pick<Artist, "id" | "name">, width = 800): string {
+export function imageForArtist(artist: Pick<Artist, "id" | "name">, _width = 800): string {
   const work = sourceWorkFor(`artist:${artist.id}:${artist.name}`);
-  return iiifUrl(work?.imageId ?? FALLBACK_IMAGE_ID, width);
+  return localImageUrl(work?.imageId ?? FALLBACK_IMAGE_ID);
 }
 
 /** Imagen para una sala. */
-export function imageForRoom(room: Pick<Room, "id" | "name">, width = 1200): string {
+export function imageForRoom(room: Pick<Room, "id" | "name">, _width = 1200): string {
   const work = sourceWorkFor(`room:${room.id}:${room.name}`);
-  return iiifUrl(work?.imageId ?? FALLBACK_IMAGE_ID, width);
+  return localImageUrl(work?.imageId ?? FALLBACK_IMAGE_ID);
 }
 
 /** Imagen directa por seed libre. */
-export function imageForSeed(seed: string, width = 1200): string {
+export function imageForSeed(seed: string, _width = 1200): string {
   const work = sourceWorkFor(seed);
-  return iiifUrl(work?.imageId ?? FALLBACK_IMAGE_ID, width);
+  return localImageUrl(work?.imageId ?? FALLBACK_IMAGE_ID);
 }
 
 /** Metadatos de la obra fuente (para créditos), si coincide por título. */

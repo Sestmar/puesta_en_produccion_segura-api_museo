@@ -211,7 +211,7 @@ export function AdminRoomsPage() {
         <EmptyState
           icon={Door}
           title="Todavía no hay salas"
-          description="Creá la primera sala para organizar el acervo."
+          description="Crea la primera sala para organizar el acervo."
           action={
             <Button
               onClick={() => {

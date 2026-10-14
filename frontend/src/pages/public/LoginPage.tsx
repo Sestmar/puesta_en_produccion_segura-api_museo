@@ -14,7 +14,7 @@ import { isApiError } from "@/lib/api/client";
 import { imageForSeed } from "@/lib/images";
 
 const schema = z.object({
-  username: z.string().trim().min(3, "Ingresá al menos 3 caracteres"),
+  username: z.string().trim().min(3, "Ingresa al menos 3 caracteres"),
   password: z.string().min(8, "La contraseña tiene al menos 8 caracteres"),
 });
 
@@ -52,7 +52,7 @@ export function LoginPage() {
       navigate(from, { replace: true });
     } catch (error) {
       if (isApiError(error) && error.status === 429) {
-        setServerError("Demasiados intentos. Esperá un momento e intentá de nuevo.");
+        setServerError("Demasiados intentos. Espera un momento e intenta de nuevo.");
       } else if (isApiError(error) && error.status === 401) {
         setServerError("Usuario o contraseña incorrectos.");
       } else {
@@ -79,7 +79,7 @@ export function LoginPage() {
             El acervo, bajo control.
           </blockquote>
           <p className="max-w-md text-sm text-bone-300">
-            Iniciá sesión para administrar obras, artistas y salas, y para consultar el
+            Inicia sesión para administrar obras, artistas y salas, y para consultar el
             registro de auditoría del sistema.
           </p>
         </div>
@@ -99,7 +99,7 @@ export function LoginPage() {
             Iniciar sesión
           </h1>
           <p className="mt-2 text-sm text-mute-400">
-            Usá tus credenciales del museo para acceder al panel.
+            Usa tus credenciales del museo para acceder al panel.
           </p>
 
           <form onSubmit={handleSubmit(onSubmit)} className="mt-8 flex flex-col gap-5" noValidate>

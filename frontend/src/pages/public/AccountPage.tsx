@@ -36,7 +36,7 @@ import { formatDateTime } from "@/lib/format";
 
 const passwordSchema = z
   .object({
-    current_password: z.string().min(1, "Ingresá tu contraseña actual"),
+    current_password: z.string().min(1, "Ingresa tu contraseña actual"),
     new_password: z
       .string()
       .min(8, "Debe tener al menos 8 caracteres")
@@ -82,7 +82,7 @@ function PasswordCard() {
       reset();
       success(
         "Contraseña actualizada",
-        "Por seguridad, cerramos todas tus sesiones. Volvé a ingresar.",
+        "Por seguridad, cerramos todas tus sesiones. Vuelve a ingresar.",
       );
       await logout();
       navigate("/login", { replace: true });

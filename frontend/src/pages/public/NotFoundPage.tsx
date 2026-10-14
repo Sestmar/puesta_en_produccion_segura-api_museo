@@ -13,7 +13,7 @@ export function NotFoundPage() {
         Página no encontrada
       </h1>
       <p className="max-w-md text-sm text-mute-400">
-        La dirección a la que querés acceder no existe o fue movida. Volvé al catálogo del
+        La dirección a la que quieres acceder no existe o fue movida. Vuelve al catálogo del
         museo.
       </p>
       <Button asChild size="lg">

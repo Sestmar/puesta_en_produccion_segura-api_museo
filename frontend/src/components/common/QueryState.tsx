@@ -21,7 +21,7 @@ export function ErrorPanel({
       <div className="flex flex-col gap-1.5">
         <h3 className="text-lg font-bold text-bone-50">{title}</h3>
         <p className="mx-auto max-w-md text-sm text-mute-400">
-          {description ?? "Revisá la conexión con la API e intentá nuevamente."}
+          {description ?? "Revisa la conexión con la API e intenta nuevamente."}
         </p>
       </div>
       {onRetry ? (

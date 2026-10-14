@@ -41,7 +41,7 @@ export function RequireAdmin({ children }: { children: ReactNode }) {
         <EmptyState
           icon={ShieldSlash}
           title="Acceso restringido"
-          description="Esta sección requiere permisos de administrador. Volvé al catálogo público."
+          description="Esta sección requiere permisos de administrador. Vuelve al catálogo público."
         />
       </div>
     );

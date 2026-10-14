@@ -10,6 +10,7 @@ The script is idempotent: it skips artists, rooms and artworks that already exis
 import json
 import re
 import sys
+import urllib.parse
 import urllib.request
 from typing import Any
 
@@ -91,7 +92,7 @@ def seed() -> None:
 
         for query in QUERIES:
             url = (
-                f"{AIC_SEARCH}?q={urllib.request.quote(query)}"
+                f"{AIC_SEARCH}?q={urllib.parse.quote(query)}"
                 f"&fields={FIELDS}"
                 f"&limit=8"
                 f"&is_public_domain=true"
@@ -112,9 +113,9 @@ def seed() -> None:
                 artist_name = artist_name[:120]
                 nationality = (nationality or "")[:60] or None
                 if artist_name not in artist_cache:
-                    existing = db.query(Artist).filter(Artist.name == artist_name).first()
-                    if existing:
-                        artist_cache[artist_name] = existing
+                    existing_artist = db.query(Artist).filter(Artist.name == artist_name).first()
+                    if existing_artist:
+                        artist_cache[artist_name] = existing_artist
                     else:
                         artist = Artist(
                             name=artist_name,
@@ -127,9 +128,9 @@ def seed() -> None:
                 # Room
                 department = item.get("department_title") or "Colección general"
                 if department not in room_cache:
-                    existing = db.query(Room).filter(Room.name == department).first()
-                    if existing:
-                        room_cache[department] = existing
+                    existing_room = db.query(Room).filter(Room.name == department).first()
+                    if existing_room:
+                        room_cache[department] = existing_room
                     else:
                         room_name, floor, description = _room_for_department(department)
                         room = Room(
@@ -144,8 +145,8 @@ def seed() -> None:
                 # Artwork
                 title = item.get("title") or "Sin título"
                 title = title[:200]
-                existing = db.query(Artwork).filter(Artwork.title == title, Artwork.artist_id == artist_cache[artist_name].id).first()
-                if existing:
+                existing_artwork = db.query(Artwork).filter(Artwork.title == title, Artwork.artist_id == artist_cache[artist_name].id).first()
+                if existing_artwork:
                     continue
 
                 artwork = Artwork(

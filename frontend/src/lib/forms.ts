@@ -21,7 +21,7 @@ export function optionalYearField(min: number, max: number) {
       (value) =>
         value === "" ||
         (/^-?\d+$/.test(value) && Number(value) >= min && Number(value) <= max),
-      `Ingresá un año válido entre ${min} y ${max}`,
+      `Ingresa un año válido entre ${min} y ${max}`,
     );
 }
 

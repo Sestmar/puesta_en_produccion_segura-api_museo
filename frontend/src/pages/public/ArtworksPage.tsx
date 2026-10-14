@@ -64,7 +64,7 @@ export function ArtworksPage() {
     <div className="container-page py-12 lg:py-16">
       <PageHeader
         title="Obras"
-        description="Explorá el acervo completo del museo. Filtrá por artista o por sala para acotar el recorrido."
+        description="Explora el acervo completo del museo. Filtra por artista o por sala para acotar el recorrido."
       />
 
       <div className="mt-8 flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">

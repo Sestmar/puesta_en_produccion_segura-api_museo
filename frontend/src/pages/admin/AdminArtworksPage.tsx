@@ -54,7 +54,7 @@ const schema = z.object({
   year: optionalYearField(-3000, 2100),
   technique: z.string().trim().max(80, "Máximo 80 caracteres"),
   description: z.string().trim().max(5000, "Máximo 5000 caracteres"),
-  artist_id: z.string().min(1, "Elegí un artista"),
+  artist_id: z.string().min(1, "Elige un artista"),
   room_id: z.string(),
 });
 
@@ -163,7 +163,7 @@ function ArtworkFormDialog({
                 label="Artista"
                 required
                 error={errors.artist_id?.message}
-                hint={artists.length === 0 ? "Primero creá un artista." : undefined}
+                hint={artists.length === 0 ? "Primero crea un artista." : undefined}
               >
                 <Controller
                   control={control}
@@ -171,7 +171,7 @@ function ArtworkFormDialog({
                   render={({ field }) => (
                     <Select value={field.value} onValueChange={field.onChange}>
                       <SelectTrigger>
-                        <SelectValue placeholder="Elegí un artista" />
+                        <SelectValue placeholder="Elige un artista" />
                       </SelectTrigger>
                       <SelectContent>
                         {artists.map((artist) => (
@@ -312,7 +312,7 @@ export function AdminArtworksPage() {
     <div className="flex flex-col gap-8">
       <PageHeader
         title="Obras"
-        description="Administrá las obras del acervo y su ubicación."
+        description="Administra las obras del acervo y su ubicación."
         action={
           <Button
             onClick={() => {

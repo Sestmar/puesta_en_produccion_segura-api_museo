@@ -60,16 +60,6 @@ export const SOURCE_WORKS: readonly SourceWork[] = [
     "imageId": "f8fd76e9-c396-5678-36ed-6a348c904d27"
   },
   {
-    "id": 82410,
-    "title": "Untitled (Painting)",
-    "artist": "Mark Rothko (Marcus Rothkowitz)\nAmerican, born Russia (Latvia), 1903–1970",
-    "date": "1953/54",
-    "department": "",
-    "medium": "Oil on canvas",
-    "origin": "United States",
-    "imageId": "df0a03a4-be1c-3f8d-73b1-5941dca57bba"
-  },
-  {
     "id": 9,
     "title": "Interior of St. Mark's, Venice",
     "artist": "David Dalhoff Neal (American, 1838–1915)",
@@ -88,6 +78,16 @@ export const SOURCE_WORKS: readonly SourceWork[] = [
     "medium": "Oil on canvas",
     "origin": "France",
     "imageId": "3c27b499-af56-f0d5-93b5-a7f2f1ad5813"
+  },
+  {
+    "id": 82410,
+    "title": "Untitled (Painting)",
+    "artist": "Mark Rothko (Marcus Rothkowitz)\nAmerican, born Russia (Latvia), 1903–1970",
+    "date": "1953/54",
+    "department": "",
+    "medium": "Oil on canvas",
+    "origin": "United States",
+    "imageId": "df0a03a4-be1c-3f8d-73b1-5941dca57bba"
   },
   {
     "id": 6565,
@@ -220,6 +220,16 @@ export const SOURCE_WORKS: readonly SourceWork[] = [
     "imageId": "d55b0cfc-0716-d6cd-3b38-5742903ce046"
   },
   {
+    "id": 86385,
+    "title": "City Landscape",
+    "artist": "Joan Mitchell\nAmerican, 1925-1992",
+    "date": "1955",
+    "department": "Contemporary Art",
+    "medium": "Oil on linen",
+    "origin": "United States",
+    "imageId": "33d04b6a-3ebe-f577-444c-969cb208ad8d"
+  },
+  {
     "id": 90048,
     "title": "Distant View of Niagara Falls",
     "artist": "Thomas Cole (American, born England, 1801–1848)",
@@ -240,16 +250,6 @@ export const SOURCE_WORKS: readonly SourceWork[] = [
     "imageId": "18282f4d-5a16-686b-7a37-afecccdb6202"
   },
   {
-    "id": 86385,
-    "title": "City Landscape",
-    "artist": "Joan Mitchell\nAmerican, 1925-1992",
-    "date": "1955",
-    "department": "Contemporary Art",
-    "medium": "Oil on linen",
-    "origin": "United States",
-    "imageId": "33d04b6a-3ebe-f577-444c-969cb208ad8d"
-  },
-  {
     "id": 68792,
     "title": "A Marine",
     "artist": "George Inness (American, 1825–1894)",
@@ -260,16 +260,6 @@ export const SOURCE_WORKS: readonly SourceWork[] = [
     "imageId": "3d2d0842-312e-8d48-708b-d6adde0777bf"
   },
   {
-    "id": 80607,
-    "title": "Self-Portrait",
-    "artist": "Vincent van Gogh (Dutch, 1853–1890)",
-    "date": "1887",
-    "department": "Painting and Sculpture of Europe",
-    "medium": "Oil on artist's board, mounted on cradled panel",
-    "origin": "Netherlands",
-    "imageId": "47c5bcb8-62ef-e5d7-55e7-f5121f409a30"
-  },
-  {
     "id": 862,
     "title": "Portrait of an Artist",
     "artist": "Follower of Frans Hals (Dutch, 1582–1666)",
@@ -278,6 +268,16 @@ export const SOURCE_WORKS: readonly SourceWork[] = [
     "medium": "Oil on canvas",
     "origin": "Holland",
     "imageId": "c95d58bf-fe9e-e5bb-2c71-ab8bad984759"
+  },
+  {
+    "id": 80607,
+    "title": "Self-Portrait",
+    "artist": "Vincent van Gogh (Dutch, 1853–1890)",
+    "date": "1887",
+    "department": "Painting and Sculpture of Europe",
+    "medium": "Oil on artist's board, mounted on cradled panel",
+    "origin": "Netherlands",
+    "imageId": "47c5bcb8-62ef-e5d7-55e7-f5121f409a30"
   },
   {
     "id": 29230,
@@ -300,14 +300,14 @@ export const SOURCE_WORKS: readonly SourceWork[] = [
     "imageId": "5490fd49-dd52-4fd7-7d41-d871dcffae55"
   },
   {
-    "id": 24,
-    "title": "Portrait of Edouard Molé",
-    "artist": "Robert Nanteuil\nFrench, 1623-1678",
-    "date": "1653",
-    "department": "Prints and Drawings",
-    "medium": "Engraving on paper",
+    "id": 87467,
+    "title": "Édouard Manet",
+    "artist": "Henri Fantin-Latour (French, 1836–1904)",
+    "date": "1867",
+    "department": "Painting and Sculpture of Europe",
+    "medium": "Oil on canvas",
     "origin": "France",
-    "imageId": "5df51c9d-dac5-d962-4d4b-300339219e54"
+    "imageId": "dd4f9115-150c-2f1a-0f37-50899553d6b4"
   },
   {
     "id": 144817,
@@ -320,14 +320,14 @@ export const SOURCE_WORKS: readonly SourceWork[] = [
     "imageId": "68310179-3770-a1dc-c961-82189eb5b2ba"
   },
   {
-    "id": 87467,
-    "title": "Édouard Manet",
-    "artist": "Henri Fantin-Latour (French, 1836–1904)",
-    "date": "1867",
+    "id": 27307,
+    "title": "Madame de Pastoret and Her Son",
+    "artist": "Jacques-Louis David (French, 1748–1825)",
+    "date": "1791–92",
     "department": "Painting and Sculpture of Europe",
     "medium": "Oil on canvas",
     "origin": "France",
-    "imageId": "dd4f9115-150c-2f1a-0f37-50899553d6b4"
+    "imageId": "72227c9e-413c-8930-477d-5a90e0a2123c"
   },
   {
     "id": 66042,
@@ -440,6 +440,16 @@ export const SOURCE_WORKS: readonly SourceWork[] = [
     "imageId": "d447305a-6898-0ddc-c191-e99508a5e77e"
   },
   {
+    "id": 118608,
+    "title": "Untitled",
+    "artist": "Unknown FSA Photographer\nAmerican, active 1930\nAttributed to Walker Evans\nAmerican, 1903–1975",
+    "date": "1935/38",
+    "department": "Photography and Media",
+    "medium": "Gelatin silver print",
+    "origin": "United States",
+    "imageId": "1312a31a-2470-7733-f7ef-57e574f5225f"
+  },
+  {
     "id": 218576,
     "title": "Photograph of Photograph",
     "artist": "Jiro Takamatsu\nJapanese, 1936-1998",
@@ -458,16 +468,6 @@ export const SOURCE_WORKS: readonly SourceWork[] = [
     "medium": "Wood with palisander and maple veneers, nickel silver",
     "origin": "Austria",
     "imageId": "feff821c-c945-710e-2e60-cdcc47495f0f"
-  },
-  {
-    "id": 118608,
-    "title": "Untitled",
-    "artist": "Unknown FSA Photographer\nAmerican, active 1930\nAttributed to Walker Evans\nAmerican, 1903–1975",
-    "date": "1935/38",
-    "department": "Photography and Media",
-    "medium": "Gelatin silver print",
-    "origin": "United States",
-    "imageId": "1312a31a-2470-7733-f7ef-57e574f5225f"
   },
   {
     "id": 118719,
@@ -600,16 +600,6 @@ export const SOURCE_WORKS: readonly SourceWork[] = [
     "imageId": "4212f149-f02a-9deb-3806-8bb2396a2d91"
   },
   {
-    "id": 185187,
-    "title": "Alphabet de la Tête",
-    "artist": "Victor Brauner\nRomanian, 1903-1966",
-    "date": "1938",
-    "department": "Modern Art",
-    "medium": "Oil on canvas",
-    "origin": "Romania",
-    "imageId": "f45b79b8-5edc-9bef-3100-baea71002604"
-  },
-  {
     "id": 253,
     "title": "Hydria (Water Jar)",
     "artist": "Greek; possibly Apulia or Campania, Italy",
@@ -618,6 +608,16 @@ export const SOURCE_WORKS: readonly SourceWork[] = [
     "medium": "terracotta, black-glaze",
     "origin": "Nola",
     "imageId": "9af8c354-e223-256b-6aa9-71738010d4d5"
+  },
+  {
+    "id": 185187,
+    "title": "Alphabet de la Tête",
+    "artist": "Victor Brauner\nRomanian, 1903-1966",
+    "date": "1938",
+    "department": "Modern Art",
+    "medium": "Oil on canvas",
+    "origin": "Romania",
+    "imageId": "f45b79b8-5edc-9bef-3100-baea71002604"
   },
   {
     "id": 23368,
@@ -630,14 +630,14 @@ export const SOURCE_WORKS: readonly SourceWork[] = [
     "imageId": "2176719e-3cbc-708b-28da-e211d27e6aa4"
   },
   {
-    "id": 14487,
-    "title": "Abstraction on Concrete",
-    "artist": "Howard Dearstyne\nAmerican, 1903–1979",
-    "date": "1940/62",
-    "department": "Photography and Media",
-    "medium": "Chromogenic print",
-    "origin": "United States",
-    "imageId": "9f670fbc-368f-e785-37fd-726ba765db1e"
+    "id": 36129,
+    "title": "The Forest (La forêt)",
+    "artist": "Jean Dubuffet\nFrench, 1901-1985",
+    "date": "1969",
+    "department": "Contemporary Art",
+    "medium": "Epoxy",
+    "origin": "France",
+    "imageId": "47c93ddc-cf30-0f1f-53b9-b6190e892a3a"
   },
   {
     "id": 93798,

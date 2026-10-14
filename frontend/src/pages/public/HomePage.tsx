@@ -1,5 +1,6 @@
 import { ArrowRight } from "@phosphor-icons/react";
 import { Link } from "react-router-dom";
+import { useEffect, useState } from "react";
 
 import { ArtistCard } from "@/components/common/ArtistCard";
 import { ArtworkCard } from "@/components/common/ArtworkCard";
@@ -10,6 +11,9 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { useArtists, useArtworks, useRooms } from "@/hooks/queries";
 import { formatNumber } from "@/lib/format";
 import { imageForArtwork, imageForSeed } from "@/lib/images";
+
+const SLIDE_INTERVAL_MS = 4500;
+const SLIDE_COUNT = 6;
 
 function Stat({ label, value }: { label: string; value: number | undefined }) {
   return (
@@ -38,6 +42,59 @@ function CardGridSkeleton({ count, className }: { count: number; className?: str
   );
 }
 
+function HeroSlideshow({ artworks }: { artworks: { id: number; title: string }[] }) {
+  const slides =
+    artworks.length > 1
+      ? artworks.slice(1, Math.min(artworks.length, 1 + SLIDE_COUNT))
+      : artworks.slice(0, 1);
+
+  const [current, setCurrent] = useState(0);
+  const [isPaused, setIsPaused] = useState(false);
+
+  useEffect(() => {
+    if (slides.length <= 1) return;
+    if (isPaused) return;
+    const timer = setInterval(() => {
+      setCurrent((prev) => (prev + 1) % slides.length);
+    }, SLIDE_INTERVAL_MS);
+    return () => clearInterval(timer);
+  }, [slides.length, isPaused]);
+
+  if (slides.length === 0) {
+    return (
+      <img
+        src={imageForSeed("museo-hero", 1600)}
+        alt="Obra destacada del museo"
+        className="absolute inset-0 size-full object-cover"
+      />
+    );
+  }
+
+  return (
+    <div
+      className="absolute inset-0"
+      onMouseEnter={() => setIsPaused(true)}
+      onMouseLeave={() => setIsPaused(false)}
+    >
+      {slides.map((artwork, index) => {
+        const isActive = index === current;
+        return (
+          <img
+            key={artwork.id}
+            src={imageForArtwork(artwork, 1600)}
+            alt={artwork.title}
+            className="absolute inset-0 size-full object-cover transition-all duration-[1500ms] ease-in-out"
+            style={{
+              opacity: isActive ? 1 : 0,
+              transform: isActive ? "scale(1.05)" : "scale(1)",
+            }}
+          />
+        );
+      })}
+    </div>
+  );
+}
+
 export function HomePage() {
   const artworksQuery = useArtworks({ limit: 8 });
   const artistsQuery = useArtists({ limit: 6 });
@@ -47,20 +104,11 @@ export function HomePage() {
   const artists = artistsQuery.data?.items ?? [];
   const rooms = roomsQuery.data?.items ?? [];
 
-  const heroArtwork = artworks[0];
-  const heroImage = heroArtwork
-    ? imageForArtwork(heroArtwork, 1600)
-    : imageForSeed("museo-hero", 1600);
-
   return (
     <>
-      {/* Hero — estilo ED SportLine: full viewport, imagen de fondo, texto centrado */}
+      {/* Hero — full viewport, slideshow de fondo, texto centrado */}
       <section className="relative -mt-16 flex min-h-[calc(100dvh-2.5rem)] items-center justify-center overflow-hidden">
-        <img
-          src={heroImage}
-          alt={heroArtwork?.title ?? "Obra destacada del museo"}
-          className="absolute inset-0 size-full object-cover"
-        />
+        <HeroSlideshow artworks={artworks} />
         <div className="overlay-ed absolute inset-0" />
 
         <div className="container-page relative z-10 flex flex-col items-center gap-8 py-32 text-center">
@@ -76,8 +124,8 @@ export function HomePage() {
           </h1>
 
           <p className="animate-fade-up-delay-2 max-w-xl text-base leading-relaxed text-bone-100/70 sm:text-lg">
-            Recorré la colección: explorá las obras y a sus autores, ubicadas por sala, y
-            descubrí cómo se organiza el acervo del museo.
+            Recorre la colección: explora las obras y a sus autores, ubicadas por sala, y
+            descubre cómo se organiza el acervo del museo.
           </p>
 
           <div className="animate-fade-up-delay-3 flex flex-wrap justify-center gap-4">
@@ -86,7 +134,12 @@ export function HomePage() {
                 Explorar obras <ArrowRight size={18} weight="bold" />
               </Link>
             </Button>
-            <Button asChild variant="secondary" size="lg" className="h-13 border-white/20 px-8 text-sm text-bone-50 hover:border-gold-500 hover:bg-white/5 hover:text-gold-400">
+            <Button
+              asChild
+              variant="secondary"
+              size="lg"
+              className="h-13 border-white/20 px-8 text-sm text-bone-50 hover:border-gold-500 hover:bg-white/5 hover:text-gold-400"
+            >
               <Link to="/salas">Visitar salas</Link>
             </Button>
           </div>
@@ -205,14 +258,19 @@ export function HomePage() {
                 Administración
               </span>
               <h2 className="text-3xl font-black uppercase tracking-tight sm:text-4xl">
-                ¿Gestionás el acervo?
+                ¿Gestionas el acervo?
               </h2>
               <p className="max-w-xl text-sm text-ink-950/80">
-                Ingresá con tu cuenta para administrar obras, artistas y salas, y consultar la
+                Ingresa con tu cuenta para administrar obras, artistas y salas, y consultar la
                 auditoría del sistema.
               </p>
             </div>
-            <Button asChild size="lg" variant="secondary" className="border-ink-950/30 bg-ink-950 text-bone-50 hover:bg-ink-900 hover:text-bone-50">
+            <Button
+              asChild
+              size="lg"
+              variant="secondary"
+              className="border-ink-950/30 bg-ink-950 text-bone-50 hover:bg-ink-900 hover:text-bone-50"
+            >
               <Link to="/login">
                 Ingresar al panel <ArrowRight size={18} weight="bold" />
               </Link>

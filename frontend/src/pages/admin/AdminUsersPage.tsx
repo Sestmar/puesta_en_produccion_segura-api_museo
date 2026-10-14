@@ -326,7 +326,7 @@ export function AdminUsersPage() {
                         {user.username}
                         {isSelf ? (
                           <Badge variant="outline" className="tracking-normal">
-                            Vos
+                            Tú
                           </Badge>
                         ) : null}
                       </span>
@@ -353,7 +353,7 @@ export function AdminUsersPage() {
                               </span>
                             </TooltipTrigger>
                             <TooltipContent>
-                              No podés cambiar tu propio rol ni estado.
+                              No puedes cambiar tu propio rol ni estado.
                             </TooltipContent>
                           </Tooltip>
                         ) : (

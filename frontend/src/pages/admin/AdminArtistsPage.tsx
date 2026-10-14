@@ -219,7 +219,7 @@ export function AdminArtistsPage() {
     <div className="flex flex-col gap-8">
       <PageHeader
         title="Artistas"
-        description="Administrá los autores del acervo."
+        description="Administra los autores del acervo."
         action={
           <Button
             onClick={() => {
@@ -242,7 +242,7 @@ export function AdminArtistsPage() {
         <EmptyState
           icon={PaintBrush}
           title="Todavía no hay artistas"
-          description="Creá el primer artista para empezar a cargar obras."
+          description="Crea el primer artista para empezar a cargar obras."
           action={
             <Button
               onClick={() => {

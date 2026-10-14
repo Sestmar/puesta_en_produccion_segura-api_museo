@@ -55,8 +55,8 @@ export function SiteFooter() {
           <div className="flex flex-col gap-5">
             <Logo />
             <p className="max-w-xs text-sm leading-relaxed text-mute-500">
-              Un catálogo vivo del museo: recorré las obras, conocé a los artistas y
-              descubrí cómo se organiza la colección por salas.
+              Un catálogo vivo del museo: recorre las obras, conoce a los artistas y
+              descubre cómo se organiza la colección por salas.
             </p>
           </div>
 
