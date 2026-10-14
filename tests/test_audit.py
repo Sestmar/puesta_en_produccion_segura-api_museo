@@ -2,7 +2,7 @@ from sqlalchemy import select
 
 from app.config import settings
 from app.models import AuditLog
-from tests.conftest import login
+from tests.conftest import login, refresh_cookie
 
 
 def _audit_rows(db, action=None):
@@ -57,12 +57,13 @@ def test_lockout_is_audited(client, db):
 
 def test_refresh_and_logout_are_audited(client, db):
     _register_admin(client)
-    tokens = login(client, "admin", "AdminPass123").json()
+    r = login(client, "admin", "AdminPass123")
+    cookie = refresh_cookie(r)
     client.post(
         "/auth/refresh",
-        json={"refresh_token": tokens["refresh_token"]},
+        cookies={"refresh_token": cookie},
     )
-    client.post("/auth/logout", json={"refresh_token": tokens["refresh_token"]})
+    client.post("/auth/logout", cookies={"refresh_token": cookie})
     assert len(_audit_rows(db, "auth.refresh")) == 1
     assert len(_audit_rows(db, "auth.logout")) == 1
 

@@ -1,5 +1,5 @@
 from app.security import create_access_token, decode_token
-from tests.conftest import login
+from tests.conftest import login, refresh_cookie
 
 
 def _bearer(token):
@@ -13,17 +13,19 @@ def test_access_token_carries_session_id(client, admin_headers):
 
 
 def test_logout_invalidates_its_access_token(client, admin_headers):
-    pair = login(client, "admin", "AdminPass123").json()
-    headers = _bearer(pair["access_token"])
+    r = login(client, "admin", "AdminPass123")
+    token = r.json()["access_token"]
+    headers = _bearer(token)
     assert client.get("/auth/me", headers=headers).status_code == 200
 
-    client.post("/auth/logout", json={"refresh_token": pair["refresh_token"]})
+    client.post("/auth/logout", cookies={"refresh_token": refresh_cookie(r)})
     assert client.get("/auth/me", headers=headers).status_code == 401
 
 
 def test_revoking_session_invalidates_its_access_token(client, admin_headers):
-    pair = login(client, "admin", "AdminPass123").json()
-    headers = _bearer(pair["access_token"])
+    r = login(client, "admin", "AdminPass123")
+    token = r.json()["access_token"]
+    headers = _bearer(token)
     assert client.get("/auth/me", headers=headers).status_code == 200
 
     sessions = client.get("/auth/sessions", headers=admin_headers).json()
@@ -33,10 +35,10 @@ def test_revoking_session_invalidates_its_access_token(client, admin_headers):
 
 
 def test_refresh_rotation_invalidates_old_access_token(client, admin_headers):
-    pair = login(client, "admin", "AdminPass123").json()
-    old_headers = _bearer(pair["access_token"])
+    r = login(client, "admin", "AdminPass123")
+    old_headers = _bearer(r.json()["access_token"])
     rotated = client.post(
-        "/auth/refresh", json={"refresh_token": pair["refresh_token"]}
+        "/auth/refresh", cookies={"refresh_token": refresh_cookie(r)}
     ).json()
 
     assert client.get("/auth/me", headers=old_headers).status_code == 401
@@ -47,13 +49,13 @@ def test_refresh_rotation_invalidates_old_access_token(client, admin_headers):
 
 
 def test_reuse_detection_revokes_all_access_tokens(client, admin_headers):
-    first = login(client, "admin", "AdminPass123").json()
-    second = login(client, "admin", "AdminPass123").json()
-    second_headers = _bearer(second["access_token"])
+    first = login(client, "admin", "AdminPass123")
+    second = login(client, "admin", "AdminPass123")
+    second_headers = _bearer(second.json()["access_token"])
     assert client.get("/auth/me", headers=second_headers).status_code == 200
 
-    client.post("/auth/refresh", json={"refresh_token": first["refresh_token"]})
-    client.post("/auth/refresh", json={"refresh_token": first["refresh_token"]})
+    client.post("/auth/refresh", cookies={"refresh_token": refresh_cookie(first)})
+    client.post("/auth/refresh", cookies={"refresh_token": refresh_cookie(first)})
     assert client.get("/auth/me", headers=second_headers).status_code == 401
 
 

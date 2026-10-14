@@ -1,7 +1,7 @@
 from sqlalchemy import select
 
 from app.models import AuditLog
-from tests.conftest import login
+from tests.conftest import login, refresh_cookie
 
 
 def _change(client, headers, current, new):
@@ -50,9 +50,10 @@ def test_change_password_revokes_the_current_session(client, admin_headers):
 
 
 def test_change_password_revokes_refresh_tokens(client, admin_headers):
-    tokens = login(client, "admin", "AdminPass123").json()
+    r = login(client, "admin", "AdminPass123")
+    cookie = refresh_cookie(r)
     _change(client, admin_headers, "AdminPass123", "NewAdmin123")
-    r = client.post("/auth/refresh", json={"refresh_token": tokens["refresh_token"]})
+    r = client.post("/auth/refresh", cookies={"refresh_token": cookie})
     assert r.status_code == 401
 
 

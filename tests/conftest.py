@@ -61,6 +61,11 @@ def login(client, username, password):
     return client.post("/auth/login", data={"username": username, "password": password})
 
 
+def refresh_cookie(response):
+    """Return the raw refresh token from the httpOnly login/refresh cookie."""
+    return response.cookies.get("refresh_token")
+
+
 @pytest.fixture()
 def admin_headers(client):
     r = client.post(

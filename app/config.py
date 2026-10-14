@@ -31,7 +31,11 @@ class Settings(BaseSettings):
     access_token_expire_minutes: int = 30
     refresh_token_expire_days: int = 14
     database_url: str = "sqlite:///./museo.db"
-    cors_origins: list[str] = ["http://localhost:3000", "http://localhost:5173"]
+    cors_origins: list[str] = [
+        "http://localhost:3000",
+        "http://localhost:5173",
+        "http://127.0.0.1:5173",
+    ]
     login_rate_limit: str = "5 per minute"
     refresh_rate_limit: str = "20 per minute"
     default_rate_limit: str = "100 per minute"
@@ -40,6 +44,9 @@ class Settings(BaseSettings):
     max_sessions_per_user: int = 10
     session_retention_days: int = 7
     audit_retention_days: int = 0
+    refresh_cookie_name: str = "refresh_token"
+    refresh_cookie_secure: bool = True
+    refresh_cookie_samesite: str = "lax"
     force_https: bool = False
     content_security_policy: str = (
         "default-src 'none'; frame-ancestors 'none'; base-uri 'none'; form-action 'none'"

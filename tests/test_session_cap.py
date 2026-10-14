@@ -1,4 +1,4 @@
-from tests.conftest import login
+from tests.conftest import login, refresh_cookie
 
 
 def test_session_cap_evicts_the_oldest(client, admin_headers, monkeypatch):
@@ -6,23 +6,23 @@ def test_session_cap_evicts_the_oldest(client, admin_headers, monkeypatch):
 
     monkeypatch.setattr(settings, "max_sessions_per_user", 2)
 
-    first = login(client, "admin", "AdminPass123").json()
+    first = login(client, "admin", "AdminPass123")
     login(client, "admin", "AdminPass123")
-    third = login(client, "admin", "AdminPass123").json()
+    third = login(client, "admin", "AdminPass123")
 
-    live = {"Authorization": f"Bearer {third['access_token']}"}
+    live = {"Authorization": f"Bearer {third.json()['access_token']}"}
     sessions = client.get("/auth/sessions", headers=live).json()
     assert len(sessions) == 2
 
     assert (
         client.post(
-            "/auth/refresh", json={"refresh_token": third["refresh_token"]}
+            "/auth/refresh", cookies={"refresh_token": refresh_cookie(third)}
         ).status_code
         == 200
     )
     assert (
         client.post(
-            "/auth/refresh", json={"refresh_token": first["refresh_token"]}
+            "/auth/refresh", cookies={"refresh_token": refresh_cookie(first)}
         ).status_code
         == 401
     )

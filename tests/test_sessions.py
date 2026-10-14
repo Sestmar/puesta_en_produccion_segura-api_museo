@@ -1,69 +1,71 @@
 from app.config import settings
-from tests.conftest import login
+from tests.conftest import login, refresh_cookie
 
 
-def test_login_returns_token_pair(client, admin_headers):
-    body = login(client, "admin", "AdminPass123").json()
+def test_login_returns_access_token_and_refresh_cookie(client, admin_headers):
+    r = login(client, "admin", "AdminPass123")
+    body = r.json()
     assert body["token_type"] == "bearer"
     assert body["access_token"]
-    assert body["refresh_token"]
+    assert "refresh_token" not in body
+    assert refresh_cookie(r)
 
 
 def test_refresh_rotates_refresh_token(client, admin_headers):
-    pair = login(client, "admin", "AdminPass123").json()
+    r = login(client, "admin", "AdminPass123")
+    first_cookie = refresh_cookie(r)
 
-    r = client.post("/auth/refresh", json={"refresh_token": pair["refresh_token"]})
+    r = client.post("/auth/refresh", cookies={"refresh_token": first_cookie})
     assert r.status_code == 200
     rotated = r.json()
-    assert rotated["refresh_token"] != pair["refresh_token"]
     assert rotated["access_token"]
+    assert "refresh_token" not in rotated
+    assert refresh_cookie(r) != first_cookie
 
-    reuse = client.post(
-        "/auth/refresh", json={"refresh_token": pair["refresh_token"]}
-    )
+    reuse = client.post("/auth/refresh", cookies={"refresh_token": first_cookie})
     assert reuse.status_code == 401
 
 
 def test_refresh_token_reuse_revokes_all_sessions(client, admin_headers):
-    first = login(client, "admin", "AdminPass123").json()
-    second = login(client, "admin", "AdminPass123").json()
+    first = login(client, "admin", "AdminPass123")
+    second = login(client, "admin", "AdminPass123")
 
     rotated = client.post(
-        "/auth/refresh", json={"refresh_token": first["refresh_token"]}
-    ).json()
+        "/auth/refresh", cookies={"refresh_token": refresh_cookie(first)}
+    )
+    assert rotated.status_code == 200
 
     reuse = client.post(
-        "/auth/refresh", json={"refresh_token": first["refresh_token"]}
+        "/auth/refresh", cookies={"refresh_token": refresh_cookie(first)}
     )
     assert reuse.status_code == 401
 
     assert (
         client.post(
-            "/auth/refresh", json={"refresh_token": second["refresh_token"]}
+            "/auth/refresh", cookies={"refresh_token": refresh_cookie(second)}
         ).status_code
         == 401
     )
     assert (
         client.post(
-            "/auth/refresh", json={"refresh_token": rotated["refresh_token"]}
+            "/auth/refresh", cookies={"refresh_token": refresh_cookie(rotated)}
         ).status_code
         == 401
     )
 
 
 def test_refresh_with_unknown_token_returns_401(client):
-    r = client.post("/auth/refresh", json={"refresh_token": "not-a-real-token"})
+    r = client.post("/auth/refresh", cookies={"refresh_token": "not-a-real-token"})
     assert r.status_code == 401
 
 
 def test_logout_revokes_refresh_token(client, admin_headers):
-    pair = login(client, "admin", "AdminPass123").json()
-    r = client.post("/auth/logout", json={"refresh_token": pair["refresh_token"]})
+    r = login(client, "admin", "AdminPass123")
+    cookie = refresh_cookie(r)
+    r = client.post("/auth/logout", cookies={"refresh_token": cookie})
     assert r.status_code == 204
     assert (
-        client.post(
-            "/auth/refresh", json={"refresh_token": pair["refresh_token"]}
-        ).status_code
+        client.post("/auth/refresh", cookies={"refresh_token": cookie}).status_code
         == 401
     )
 
@@ -82,16 +84,15 @@ def test_list_sessions_returns_only_active_sessions(client, admin_headers):
 
 
 def test_revoke_session_by_id(client, admin_headers):
-    pair = login(client, "admin", "AdminPass123").json()
+    r = login(client, "admin", "AdminPass123")
+    cookie = refresh_cookie(r)
     sessions = client.get("/auth/sessions", headers=admin_headers).json()
     target = max(s["id"] for s in sessions)
 
     r = client.delete(f"/auth/sessions/{target}", headers=admin_headers)
     assert r.status_code == 204
     assert (
-        client.post(
-            "/auth/refresh", json={"refresh_token": pair["refresh_token"]}
-        ).status_code
+        client.post("/auth/refresh", cookies={"refresh_token": cookie}).status_code
         == 401
     )
 
@@ -122,21 +123,21 @@ def test_revoke_all_sessions_requires_auth(client):
 
 
 def test_revoke_all_sessions_ends_every_session(client, admin_headers):
-    first = login(client, "admin", "AdminPass123").json()
-    second = login(client, "admin", "AdminPass123").json()
+    first = login(client, "admin", "AdminPass123")
+    second = login(client, "admin", "AdminPass123")
 
     r = client.delete("/auth/sessions", headers=admin_headers)
     assert r.status_code == 204
 
     assert (
         client.post(
-            "/auth/refresh", json={"refresh_token": first["refresh_token"]}
+            "/auth/refresh", cookies={"refresh_token": refresh_cookie(first)}
         ).status_code
         == 401
     )
     assert (
         client.post(
-            "/auth/refresh", json={"refresh_token": second["refresh_token"]}
+            "/auth/refresh", cookies={"refresh_token": refresh_cookie(second)}
         ).status_code
         == 401
     )
@@ -158,7 +159,7 @@ def test_revoke_all_sessions_is_audited(client, admin_headers, db):
 
 
 def test_revoke_all_sessions_isolated_to_caller(client, admin_headers, viewer_headers):
-    viewer = login(client, "viewer", "ViewerPass123").json()
+    viewer = login(client, "viewer", "ViewerPass123")
     client.delete("/auth/sessions", headers=admin_headers)
     # The viewer's sessions are untouched.
     assert (
@@ -166,7 +167,7 @@ def test_revoke_all_sessions_isolated_to_caller(client, admin_headers, viewer_he
     )
     assert (
         client.post(
-            "/auth/refresh", json={"refresh_token": viewer["refresh_token"]}
+            "/auth/refresh", cookies={"refresh_token": refresh_cookie(viewer)}
         ).status_code
         == 200
     )

@@ -1,5 +1,5 @@
 
-from tests.conftest import login
+from tests.conftest import login, refresh_cookie
 
 
 def test_first_user_becomes_admin(client):
@@ -109,12 +109,12 @@ def test_refresh_rate_limit_returns_429(client, admin_headers, monkeypatch):
     from app.config import settings
 
     monkeypatch.setattr(settings, "refresh_rate_limit", "3 per minute")
-    token = login(client, "admin", "AdminPass123").json()["refresh_token"]
+    r = login(client, "admin", "AdminPass123")
     for _ in range(3):
-        r = client.post("/auth/refresh", json={"refresh_token": token})
+        cookie = refresh_cookie(r)
+        r = client.post("/auth/refresh", cookies={"refresh_token": cookie})
         assert r.status_code == 200, r.text
-        token = r.json()["refresh_token"]
-    r = client.post("/auth/refresh", json={"refresh_token": token})
+    r = client.post("/auth/refresh", cookies={"refresh_token": refresh_cookie(r)})
     assert r.status_code == 429
 
 

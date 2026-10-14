@@ -9,18 +9,12 @@ from sqlalchemy.orm import Session
 
 from app.audit import AuditAction, record_event
 from app.config import settings
+from app.cookies import clear_refresh_cookie, get_refresh_cookie, set_refresh_cookie
 from app.database import get_db
 from app.deps import get_current_user, require_admin_or_bootstrap
 from app.models import AuthSession, Role, User
 from app.ratelimit import limiter
-from app.schemas import (
-    PasswordChange,
-    RefreshRequest,
-    SessionOut,
-    TokenPairOut,
-    UserCreate,
-    UserOut,
-)
+from app.schemas import PasswordChange, SessionOut, TokenOut, UserCreate, UserOut
 from app.security import create_access_token, hash_password, verify_password
 from app.sessions import (
     _as_utc,
@@ -84,10 +78,11 @@ def register(
     return user
 
 
-@router.post("/login", response_model=TokenPairOut)
+@router.post("/login", response_model=TokenOut)
 @limiter.limit(lambda: settings.login_rate_limit)
 def login(
     request: Request,
+    response: Response,
     form_data: Annotated[OAuth2PasswordRequestForm, Depends()],
     db: Annotated[Session, Depends(get_db)],
 ):
@@ -97,8 +92,6 @@ def login(
         and user.locked_until is not None
         and _as_utc(user.locked_until) > _utcnow()
     ):
-        # Locked: reject with the same generic error to avoid revealing the
-        # account exists through a different message (anti-enumeration).
         record_event(
             db,
             action=AuditAction.LOGIN_LOCKED,
@@ -142,7 +135,6 @@ def login(
             headers={"WWW-Authenticate": "Bearer"},
         )
     if not user.is_active:
-        # Disabled account: same generic error as bad credentials, but audited.
         record_event(
             db,
             action=AuditAction.LOGIN_BLOCKED,
@@ -172,11 +164,8 @@ def login(
     access_token = create_access_token(
         subject=user.username, role=user.role, session_id=session.id
     )
-    return {
-        "access_token": access_token,
-        "refresh_token": refresh_token,
-        "token_type": "bearer",
-    }
+    set_refresh_cookie(response, refresh_token)
+    return {"access_token": access_token, "token_type": "bearer"}
 
 
 def _invalid_refresh(detail: str) -> HTTPException:
@@ -187,19 +176,21 @@ def _invalid_refresh(detail: str) -> HTTPException:
     )
 
 
-@router.post("/refresh", response_model=TokenPairOut)
+@router.post("/refresh", response_model=TokenOut)
 @limiter.limit(lambda: settings.refresh_rate_limit)
 def refresh(
-    payload: RefreshRequest,
     request: Request,
+    response: Response,
     db: Annotated[Session, Depends(get_db)],
 ):
-    session = find_by_token(db, payload.refresh_token)
+    raw_token = get_refresh_cookie(request)
+    if raw_token is None:
+        raise _invalid_refresh("Invalid refresh token")
+
+    session = find_by_token(db, raw_token)
     if session is None:
         raise _invalid_refresh("Invalid refresh token")
     if session.revoked_at is not None:
-        # A rotated/revoked token was replayed: assume the token was stolen and
-        # kill every session for that user.
         revoke_all_for_user(db, session.user_id)
         raise _invalid_refresh("Refresh token has been revoked")
     if is_expired(session):
@@ -211,6 +202,7 @@ def refresh(
     access_token = create_access_token(
         subject=user.username, role=user.role, session_id=new_session.id
     )
+    set_refresh_cookie(response, new_refresh)
     record_event(
         db,
         action=AuditAction.REFRESH,
@@ -220,22 +212,21 @@ def refresh(
         details={"username": user.username},
         request=request,
     )
-    return {
-        "access_token": access_token,
-        "refresh_token": new_refresh,
-        "token_type": "bearer",
-    }
+    return {"access_token": access_token, "token_type": "bearer"}
 
 
 @router.post("/logout", status_code=status.HTTP_204_NO_CONTENT)
 def logout(
-    payload: RefreshRequest,
     request: Request,
+    response: Response,
     db: Annotated[Session, Depends(get_db)],
 ):
-    session = find_by_token(db, payload.refresh_token)
-    if session is not None:
-        revoke(db, session)
+    raw_token = get_refresh_cookie(request)
+    if raw_token is not None:
+        session = find_by_token(db, raw_token)
+        if session is not None:
+            revoke(db, session)
+    clear_refresh_cookie(response)
     record_event(
         db,
         action=AuditAction.LOGOUT,
@@ -250,6 +241,7 @@ def change_password(
     payload: PasswordChange,
     current_user: Annotated[User, Depends(get_current_user)],
     request: Request,
+    response: Response,
     db: Annotated[Session, Depends(get_db)],
 ):
     if not verify_password(payload.current_password, current_user.hashed_password):
@@ -263,8 +255,8 @@ def change_password(
             detail="New password must differ from the current one",
         )
     current_user.hashed_password = hash_password(payload.new_password)
-    # Force every device to re-authenticate with the new credentials.
     revoke_all_for_user(db, current_user.id)
+    clear_refresh_cookie(response)
     record_event(
         db,
         action=AuditAction.PASSWORD_CHANGED,
@@ -280,9 +272,11 @@ def change_password(
 def revoke_all_sessions(
     current_user: Annotated[User, Depends(get_current_user)],
     request: Request,
+    response: Response,
     db: Annotated[Session, Depends(get_db)],
 ):
     revoke_all_for_user(db, current_user.id)
+    clear_refresh_cookie(response)
     record_event(
         db,
         action=AuditAction.SESSION_REVOKED_ALL,
