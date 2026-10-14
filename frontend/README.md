@@ -1,0 +1,173 @@
+# Frontend del Museo
+
+SPA construida con **React 19**, **Vite**, **TypeScript** y **Tailwind CSS v4**. Ofrece el catálogo público del museo (obras, artistas y salas) y un panel de administración protegido por roles.
+
+## Características
+
+- **Catálogo público**: listados paginados y páginas de detalle de obras, artistas y salas.
+- **Autenticación segura**: JWT con *access token* en memoria y *refresh token* en cookie `httpOnly` + `Secure` + `SameSite`. El frontend nunca toca el refresh token.
+- **Panel de administración**: gestión de obras, artistas, salas, usuarios y registro de auditoría con verificación de cadena de hashes.
+- **RBAC**: rol `admin` para escrituras; rol `viewer` para lecturas. El catálogo público no requiere login.
+- **Formularios robustos**: React Hook Form + Zod, con mensajes de error accesibles.
+- **Datos remotos**: TanStack Query para caché, invalidación y estados de carga/error.
+- **UX/UI**: componentes accesibles sobre Radix UI, tipografía Red Hat, iconos Phosphor y animaciones con Motion.
+
+## Stack tecnológico
+
+- React 19 + React Router v7
+- Vite 8
+- TypeScript 6 (strict, `verbatimModuleSyntax`, `noUncheckedIndexedAccess`)
+- Tailwind CSS v4 con `@tailwindcss/vite`
+- Radix UI (select, dialog, dropdown, toast, tooltip, etc.)
+- TanStack Query v5
+- React Hook Form v7 + Zod v3 + `@hookform/resolvers`
+- ESLint 10 flat config
+
+## Estructura del proyecto
+
+```
+frontend/
+├── public/                 # Assets estáticos
+├── scripts/                # Scripts auxiliares (fetch-works.mjs)
+├── src/
+│   ├── components/
+│   │   ├── common/         # Cards, guards, QueryState, PageHeader...
+│   │   ├── layout/         # PublicLayout, AdminLayout, SiteHeader, SiteFooter...
+│   │   └── ui/             # Componentes base reutilizables (button, input, table...)
+│   ├── context/            # AuthContext, AuthProvider
+│   ├── data/               # Datos estáticos/comunes
+│   ├── hooks/              # Queries, mutations, useAuth, useDebouncedValue
+│   ├── lib/
+│   │   ├── api/            # Cliente HTTP, endpoints, query keys, tipos
+│   │   ├── env.ts          # Variables de entorno tipadas
+│   │   ├── format.ts       # Formateo de fechas, números, acciones de auditoría
+│   │   ├── forms.ts        # Conversión de tipos para formularios
+│   │   ├── images.ts       # URLs de imágenes del Art Institute of Chicago
+│   │   └── utils.ts        # cn() y helpers
+│   ├── pages/
+│   │   ├── public/         # Home, Artworks, Artists, Rooms, Login, Account, 404...
+│   │   └── admin/          # Dashboard, AdminArtworks, AdminArtists, AdminRooms, AdminUsers, AdminAudit
+│   ├── App.tsx             # Router principal
+│   ├── index.css           # Theme tokens + Tailwind
+│   └── main.tsx            # Punto de entrada
+├── .env.example            # Variables de entorno de ejemplo
+├── Dockerfile              # Multi-target: dev (hot reload) / prod (nginx)
+├── nginx.conf              # Configuración de nginx para SPA
+├── eslint.config.js        # Flat config ESLint
+├── package.json
+├── tsconfig.json
+└── vite.config.ts
+```
+
+## Variables de entorno
+
+Copiá `frontend/.env.example` a `frontend/.env` y ajustá:
+
+```bash
+VITE_API_URL=http://127.0.0.1:8000
+```
+
+| Variable | Descripción | Por defecto |
+|---|---|---|
+| `VITE_API_URL` | URL base de la API FastAPI | `http://127.0.0.1:8000` |
+
+Las variables de Vite deben comenzar con `VITE_` para ser expuestas al cliente.
+
+## Puesta en marcha
+
+### Requisitos previos
+
+- Node.js 22+ (recomendado usar `nvm`)
+- npm (viene con Node)
+- API backend corriendo (ver README.md de la raíz)
+
+### Opción A — Local (desarrollo)
+
+```bash
+cd frontend
+cp .env.example .env        # edita VITE_API_URL si es necesario
+npm install
+npm run dev
+```
+
+La aplicación estará disponible en `http://localhost:5173`.
+
+### Opción B — Docker Compose (junto al backend)
+
+Desde la raíz del proyecto:
+
+```bash
+# Copiá y editá las variables de entorno del backend
+copy .env.example .env      # Windows
+cp .env.example .env        # Linux/macOS
+
+# Levantá PostgreSQL, Redis, API y frontend
+docker compose up --build
+```
+
+- Frontend: `http://localhost:5173`
+- API: `http://127.0.0.1:8000`
+- Documentación interactiva: `http://127.0.0.1:8000/docs`
+
+El servicio `frontend` usa el target `dev` del Dockerfile, con hot reload y volumen montado para que los cambios locales se reflejen inmediatamente.
+
+## Scripts disponibles
+
+```bash
+npm run dev        # Servidor de desarrollo Vite
+npm run build      # Typecheck + build de producción en dist/
+npm run preview    # Previsualizar el build de producción
+npm run typecheck  # tsc --noEmit
+npm run lint       # ESLint
+```
+
+## Build de producción
+
+```bash
+cd frontend
+npm ci
+npm run build
+```
+
+El resultado queda en `frontend/dist/`. Para servirlo con nginx usando el Dockerfile de producción:
+
+```bash
+docker build -t museo-frontend --target prod ./frontend
+docker run -p 80:80 museo-frontend
+```
+
+La imagen de producción:
+- Compila la SPA estática.
+- Sirve los assets con nginx.
+- Aplica compresión gzip.
+- Cachea assets hasheados por un año.
+- Redirige cualquier ruta a `index.html` para que React Router funcione.
+
+## Flujo de autenticación
+
+1. El usuario inicia sesión en `/login`.
+2. El backend responde con el `access_token` en el body **y** setea el `refresh_token` en una cookie `httpOnly`, `Secure`, `SameSite=Lax`, path `/auth`.
+3. El frontend guarda el `access_token` en memoria y lo adjunta como `Authorization: Bearer <token>`.
+4. Si el access token expira, el cliente HTTP intenta `POST /auth/refresh`. El navegador envía la cookie automáticamente; el backend rota la sesión y devuelve un nuevo access token.
+5. Al recargar la página, `AuthProvider` intenta `/auth/me`; si falla, intenta `/auth/refresh` con la cookie. Si ambos fallan, el usuario debe volver a loguearse.
+6. Logout, cambio de contraseña y "cerrar todas las sesiones" revocan las sesiones del backend y borran la cookie.
+
+## Conexión con el backend
+
+- El cliente HTTP (`src/lib/api/client.ts`) envía `credentials: "include"` en cada petición para que las cookies crucen orígenes.
+- El backend debe tener `allow_credentials=True` en CORS y debe incluir el origen del frontend en `CORS_ORIGINS`.
+- En el `docker-compose.yml` raíz ya están configurados los orígenes `http://localhost:5173` y `http://127.0.0.1:5173`, y `REFRESH_COOKIE_SECURE=false` para desarrollo local sobre HTTP.
+
+## Convenciones
+
+- **Imports**: usamos el alias `@/` apuntando a `src/`.
+- **Tipado estricto**: `verbatimModuleSyntax` y `noUncheckedIndexedAccess` están activos. Cualquier import de tipo debe usar `import type`.
+- **Selectores vacíos**: Radix Select no admite `value=""`; usamos sentinelas como `"all"` o `"none"`.
+- **Formularios**: evitamos `z.transform`; las conversiones manuales viven en `src/lib/forms.ts`.
+- **Errores**: el componente `QueryState` y el helper `errorMessage` centralizan el manejo de estados de carga/error.
+
+## Notas de seguridad
+
+- Nunca almacenamos tokens en `localStorage` ni `sessionStorage`.
+- La cookie de refresh no es accesible mediante JavaScript (`httpOnly`), solo se envía por HTTPS en producción (`Secure`) y restringida a solicitudes del mismo sitio (`SameSite`).
+- El CSP del backend es restrictivo; en producción la SPA se sirve como estáticos y no requiere loosening del CSP.

@@ -1,0 +1,7 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" role="img" aria-label="Museo">
+  <rect width="64" height="64" rx="14" fill="#181819" />
+  <path
+    d="M15 47V17h7l10 16 10-16h7v30h-6.6V28.6L36 39.6h-8L21.6 28.6V47z"
+    fill="#ce8c19"
+  />
+</svg>
