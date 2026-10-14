@@ -10,7 +10,9 @@ SPA construida con **React 19**, **Vite**, **TypeScript** y **Tailwind CSS v4**.
 - **RBAC**: rol `admin` para escrituras; rol `viewer` para lecturas. El catálogo público no requiere login.
 - **Formularios robustos**: React Hook Form + Zod, con mensajes de error accesibles.
 - **Datos remotos**: TanStack Query para caché, invalidación y estados de carga/error.
-- **UX/UI**: componentes accesibles sobre Radix UI, tipografía Red Hat, iconos Phosphor y animaciones con Motion.
+- **Imágenes locales**: las fotos de las obras se descargan a `public/works/` durante el seed/catalogado porque el CDN IIIF del Art Institute de Chicago bloquea el *hotlinking* desde orígenes ajenos a `artic.edu`.
+- **Hero animado**: el fondo de la landing alterna suavemente entre varias obras cada 4,5 s.
+- **UX/UI**: componentes accesibles sobre Radix UI, tipografía Red Hat, iconos Phosphor y animaciones con Motion. El texto de la interfaz está en castellano neutro.
 
 ## Stack tecnológico
 
@@ -42,7 +44,7 @@ frontend/
 │   │   ├── env.ts          # Variables de entorno tipadas
 │   │   ├── format.ts       # Formateo de fechas, números, acciones de auditoría
 │   │   ├── forms.ts        # Conversión de tipos para formularios
-│   │   ├── images.ts       # URLs de imágenes del Art Institute of Chicago
+│   │   ├── images.ts       # URLs locales de imágenes del catálogo
 │   │   └── utils.ts        # cn() y helpers
 │   ├── pages/
 │   │   ├── public/         # Home, Artworks, Artists, Rooms, Login, Account, 404...
@@ -114,11 +116,12 @@ El servicio `frontend` usa el target `dev` del Dockerfile, con hot reload y volu
 ## Scripts disponibles
 
 ```bash
-npm run dev        # Servidor de desarrollo Vite
-npm run build      # Typecheck + build de producción en dist/
-npm run preview    # Previsualizar el build de producción
-npm run typecheck  # tsc --noEmit
-npm run lint       # ESLint
+npm run dev                       # Servidor de desarrollo Vite
+npm run build                     # Typecheck + build de producción en dist/
+npm run preview                   # Previsualizar el build de producción
+npm run typecheck                 # tsc --noEmit
+npm run lint                      # ESLint
+node scripts/fetch-works.mjs      # Regenera src/data/works.ts y descarga imágenes a public/works/
 ```
 
 ## Build de producción
@@ -165,6 +168,26 @@ La imagen de producción:
 - **Selectores vacíos**: Radix Select no admite `value=""`; usamos sentinelas como `"all"` o `"none"`.
 - **Formularios**: evitamos `z.transform`; las conversiones manuales viven en `src/lib/forms.ts`.
 - **Errores**: el componente `QueryState` y el helper `errorMessage` centralizan el manejo de estados de carga/error.
+
+## Imágenes del catálogo
+
+Las imágenes se sirven desde `frontend/public/works/` en lugar de enlazar directamente al CDN IIIF del Art Institute of Chicago. Esto evita que el navegador reciba `403` por la protección de *hotlinking* de `artic.edu` cuando la aplicación corre en `localhost` o en otro dominio propio.
+
+Para regenerar el catálogo y descargar las fotos:
+
+```bash
+cd frontend
+node scripts/fetch-works.mjs
+```
+
+El script:
+
+1. Consulta la API pública del Art Institute de Chicago.
+2. Genera `src/data/works.ts` con los metadatos de dominio público.
+3. Descarga cada imagen a `public/works/{imageId}.jpg` usando los headers `Referer`/`Origin` de `artic.edu`.
+4. Saltea los archivos ya existentes, por lo que es seguro volver a ejecutarlo.
+
+Si querés usar fotos propias, colocalas en `public/works/{imageId}.jpg` y actualizá `src/data/works.ts` con los `imageId` correspondientes.
 
 ## Notas de seguridad
 

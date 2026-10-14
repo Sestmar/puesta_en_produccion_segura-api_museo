@@ -64,6 +64,23 @@ uvicorn app.main:app --reload
 
 Base de la API: `http://127.0.0.1:8000` — docs: `http://127.0.0.1:8000/docs`
 
+## Seed de datos e imágenes
+
+El repositorio incluye un script para poblar la base de datos con obras de dominio público del Art Institute of Chicago:
+
+```bash
+python -m app.seed
+```
+
+Para que el frontend muestre las fotos sin depender del hotlinking del CDN de Chicago, las imágenes se descargan y sirven localmente:
+
+```bash
+cd frontend
+node scripts/fetch-works.mjs
+```
+
+Ver la documentación de `frontend/README.md` para más detalles sobre el manejo de imágenes.
+
 ## Migraciones de base de datos (Alembic)
 
 El esquema está versionado con Alembic; la aplicación **no** crea las tablas al arrancar.
