@@ -5,7 +5,7 @@ API REST para un catálogo de museo construida con FastAPI, diseñada siguiendo 
 ## Características
 
 - **Entidades**: artistas, salas y obras (con relaciones e integridad referencial)
-- **Autenticación**: flujo de contraseña OAuth2 con tokens de acceso JWT ligados a la sesión (expiración de 30 min; revocar la sesión —logout, revocación explícita o detección de reuso— los invalida al instante) y refresh tokens con estado (rotación, detección de reuso y sesiones revocables)
+- **Autenticación**: flujo de contraseña OAuth2 con *access token* JWT de corta durada (30 min) y *refresh token* opaco entregado en una cookie `httpOnly` + `Secure` + `SameSite`. Revocar la sesión (logout, cambio de contraseña, detección de reuso o cierre de todas las sesiones) invalida el acceso al instante
 - **Autorización**: rol `admin` para escrituras, rol `viewer` para lecturas; los usuarios no autenticados pueden explorar el catálogo
 - **Gestión de usuarios** (solo admin): `GET /users` para listar, y `PATCH /users/{id}` para cambiar el rol o activar/desactivar una cuenta. Desactivar una cuenta revoca sus sesiones en el acto y bloquea el login (con el mismo error genérico, sin revelar el motivo); un admin no puede modificarse a sí mismo, lo que evita el auto-bloqueo
 - **Cambio de contraseña**: `PUT /auth/password` exige la contraseña actual, aplica la misma política de complejidad y revoca todas las sesiones del usuario para forzar el re-login en todos sus dispositivos
@@ -29,7 +29,11 @@ API REST para un catálogo de museo construida con FastAPI, diseñada siguiendo 
 
 ## Stack tecnológico
 
-FastAPI, SQLAlchemy 2.0, PostgreSQL mediante `psycopg` (SQLite para desarrollo local y pruebas), migraciones con Alembic, Pydantic v2, PyJWT, bcrypt, slowapi, pytest y Docker.
+**Backend**: FastAPI, SQLAlchemy 2.0, PostgreSQL mediante `psycopg` (SQLite para desarrollo local y pruebas), migraciones con Alembic, Pydantic v2, PyJWT, bcrypt, slowapi, pytest.
+
+**Frontend**: React 19, Vite, TypeScript, Tailwind CSS v4, React Router v7, TanStack Query, React Hook Form + Zod, Radix UI.
+
+**Infraestructura**: Docker, Docker Compose, nginx, Redis (para el límite de tasa compartido).
 
 ## Puesta en marcha
 
@@ -39,8 +43,12 @@ FastAPI, SQLAlchemy 2.0, PostgreSQL mediante `psycopg` (SQLite para desarrollo l
 docker compose up --build
 ```
 
-Esto inicia PostgreSQL y la API, aplica las migraciones de Alembic automáticamente y expone
-la API en `http://127.0.0.1:8000`. Los datos de Postgres persisten en el volumen `pgdata`.
+Esto inicia PostgreSQL, Redis, la API y el frontend, aplica las migraciones de Alembic automáticamente y expone:
+
+- Frontend: `http://localhost:5173`
+- API: `http://127.0.0.1:8000`
+
+Los datos de Postgres persisten en el volumen `pgdata`.
 
 ### Opción B — Local (SQLite)
 
@@ -113,30 +121,31 @@ curl -X POST http://127.0.0.1:8000/auth/register ^
   -H "Content-Type: application/json" ^
   -d "{\"username\":\"admin\",\"password\":\"AdminPass123\"}"
 
-# 2. Iniciar sesión y obtener los tokens
+# 2. Iniciar sesión: access token en el body, refresh token en cookie httpOnly
 curl -X POST http://127.0.0.1:8000/auth/login ^
   -H "Content-Type: application/x-www-form-urlencoded" ^
-  -d "username=admin&password=AdminPass123"
+  -d "username=admin&password=AdminPass123" ^
+  -c cookies.txt
 
 # 3. Crear un recurso (solo admin)
 curl -X POST http://127.0.0.1:8000/artists ^
-  -H "Authorization: Bearer <TOKEN>" ^
+  -H "Authorization: Bearer <ACCESS_TOKEN>" ^
   -H "Content-Type: application/json" ^
   -d "{\"name\":\"Frida Kahlo\",\"nationality\":\"Mexican\",\"birth_year\":1907}"
 ```
 
-`/auth/login` devuelve `access_token` y `refresh_token`. Los refresh tokens son sesiones revocables del lado del servidor:
-`POST /auth/refresh` rota el token (reutilizar un token ya rotado revoca todas las sesiones del usuario),
-`POST /auth/logout` revoca un token, y `GET`/`DELETE /auth/sessions` lista y revoca las sesiones activas.
+`/auth/login` devuelve el `access_token` en el body y setea el `refresh_token` en una cookie `httpOnly`, `Secure`, `SameSite=Lax` (path `/auth`). El frontend no puede leer el refresh token; el navegador lo envía automáticamente en `/auth/refresh`. Los refresh tokens son sesiones revocables del lado del servidor:
+`POST /auth/refresh` rota la sesión y la cookie (reutilizar un token ya rotado revoca todas las sesiones del usuario),
+`POST /auth/logout` revoca la sesión de la cookie y la borra, y `GET`/`DELETE /auth/sessions` lista y revoca las sesiones activas.
 
 ## Endpoints
 
 | Método | Ruta | Autenticación | Descripción |
 |---|---|---|---|
 | POST | `/auth/register` | admin (abierto con la base de datos vacía) | Crear usuario |
-| POST | `/auth/login` | público (con límite de tasa) | Obtener tokens de acceso y refresh |
-| POST | `/auth/refresh` | público | Rotar un refresh token (emite un par nuevo) |
-| POST | `/auth/logout` | público | Revocar el refresh token indicado |
+| POST | `/auth/login` | público (con límite de tasa) | Obtener access token; setea refresh token en cookie httpOnly |
+| POST | `/auth/refresh` | público (cookie httpOnly) | Rotar refresh token (emite nuevo access token y cookie) |
+| POST | `/auth/logout` | público (cookie httpOnly) | Revocar la sesión de la cookie y borrarla |
 | DELETE | `/auth/sessions` | bearer | Cerrar todas las sesiones del solicitante (204) |
 | GET | `/auth/sessions` | bearer | Listar las sesiones activas del solicitante |
 | DELETE | `/auth/sessions/{id}` | bearer | Revocar una sesión (solo el propietario, 204) |
@@ -162,6 +171,12 @@ Eliminar un artista o una sala que todavía tiene obras devuelve `409 Conflict`.
 ## Estructura del proyecto
 
 ```
+frontend/         Aplicación React + Vite + TypeScript + Tailwind (catálogo + panel admin)
+  src/            Código fuente, componentes, páginas, hooks y capa API
+  Dockerfile      Multi-target: dev (hot reload) / prod (nginx estático)
+  nginx.conf      Configuración de nginx para SPA
+  README.md       Guía completa del frontend
+
 app/
   main.py         Aplicación FastAPI, middleware, CORS y manejador de límite de tasa
   config.py       Configuración desde variables de entorno (.env)
@@ -191,7 +206,8 @@ tests/            178 pruebas (auth, RBAC, sesiones, tope de sesiones, revocaci�
 ## Notas de producción
 
 - Despliega detrás de TLS (HTTPS): los tokens son credenciales bearer y nunca deben viajar por HTTP en claro.
-- Define `ENVIRONMENT=production`, un `SECRET_KEY` fuerte (32+ bytes aleatorios) y `CORS_ORIGINS` reales. El `SECRET_KEY` también es la clave de la cadena de auditoría: rotarlo invalida la verificación de las entradas anteriores, así que re-encadena (`GET /audit/verify` fallará como advertencia) o conserva el valor previo si necesitas verificar el histórico.
+- Define `ENVIRONMENT=production`, un `SECRET_KEY` fuerte (32+ bytes aleatorios) y `CORS_ORIGINS` reales. En producción activá `REFRESH_COOKIE_SECURE=true` para que el navegador solo envíe la cookie de refresh por HTTPS.
+- El `SECRET_KEY` también es la clave de la cadena de auditoría: rotarlo invalida la verificación de las entradas anteriores, así que re-encadena (`GET /audit/verify` fallará como advertencia) o conserva el valor previo si necesitas verificar el histórico.
 - Define `AUDIT_ANCHOR_PATH` apuntando a un archivo fuera de la base de datos (idealmente en un volumen/permisos separados) para detectar el truncado de la cola de auditoría. Si el atacante controla tanto la base como el archivo de ancla, ninguna de las dos protecciones alcanza: el ancla es defensa en profundidad, no una garantía.
 - Programa `python -m app.retention` (cron/timer/CronJob) para evitar que `auth_sessions` y `audit_logs` crezcan sin límite. Para auditoría, si necesitas conservarla indefinidamente, dejá `AUDIT_RETENTION_DAYS=0` y exportá los registros a un almacén externo en vez de podarlos.
 - Con `ENVIRONMENT=production`, `/docs`, `/redoc` y `/openapi.json` quedan ocultos (responden 404).
