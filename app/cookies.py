@@ -1,10 +1,20 @@
 """Cookie helpers for the httpOnly refresh token."""
 
+from typing import Literal
+
 from fastapi import Request, Response
 
 from app.config import settings
 
 REFRESH_COOKIE_NAME = settings.refresh_cookie_name
+SameSitePolicy = Literal["lax", "strict", "none"]
+
+
+def _parse_samesite(value: str) -> SameSitePolicy:
+    normalized = value.lower()
+    if normalized in ("lax", "strict", "none"):
+        return normalized  # type: ignore[return-value]
+    raise ValueError(f"Invalid SameSite cookie policy: {value!r}")
 
 
 def set_refresh_cookie(response: Response, token: str) -> None:
@@ -14,7 +24,7 @@ def set_refresh_cookie(response: Response, token: str) -> None:
         value=token,
         httponly=True,
         secure=settings.refresh_cookie_secure,
-        samesite=settings.refresh_cookie_samesite.lower(),
+        samesite=_parse_samesite(settings.refresh_cookie_samesite),
         max_age=int(settings.refresh_token_expire_days * 24 * 60 * 60),
         path="/auth",
     )
