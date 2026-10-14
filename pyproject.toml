@@ -26,6 +26,7 @@ ignore_errors = true
 [tool.coverage.run]
 source = ["app"]
 branch = true
+omit = ["app/seed.py"]
 
 [tool.coverage.report]
 show_missing = true

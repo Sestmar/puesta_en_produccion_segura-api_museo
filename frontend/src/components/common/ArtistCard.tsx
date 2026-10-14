@@ -7,7 +7,7 @@ import type { Artist } from "@/lib/api/types";
 export function ArtistCard({ artist }: { artist: Artist }) {
   return (
     <Link to={`/artistas/${artist.id}`} className="group flex flex-col gap-3">
-      <div className="relative aspect-square overflow-hidden rounded-card bg-ink-800">
+      <div className="hover-lift relative aspect-square overflow-hidden rounded-card bg-ink-800">
         <img
           src={imageForArtist(artist, 600)}
           alt={artist.name}
@@ -15,12 +15,13 @@ export function ArtistCard({ artist }: { artist: Artist }) {
           decoding="async"
           className="artwork-media size-full object-cover"
         />
+        <div className="absolute inset-0 bg-gradient-to-t from-ink-950/70 via-transparent to-transparent opacity-0 transition-opacity duration-500 group-hover:opacity-100" />
       </div>
       <div className="flex flex-col gap-1">
-        <h3 className="font-display text-base font-bold text-bone-50 transition-colors group-hover:text-gold-400">
+        <h3 className="font-display text-base font-bold text-bone-50 transition-colors duration-300 group-hover:text-gold-400">
           {artist.name}
         </h3>
-        <p className="text-[11px] uppercase tracking-[0.14em] text-mute-400">
+        <p className="text-[11px] uppercase tracking-[0.14em] text-mute-500">
           {[artist.nationality, formatLifespan(artist.birth_year, artist.death_year)]
             .filter((value) => value && value !== "—")
             .join(" · ") || "Sobre el artista"}

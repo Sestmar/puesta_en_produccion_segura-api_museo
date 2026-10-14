@@ -39,8 +39,8 @@ const NAV_LINKS: { label: string; to: string }[] = [
 
 function navLinkClass({ isActive }: { isActive: boolean }): string {
   return cn(
-    "relative font-display text-xs font-bold uppercase tracking-[0.16em] transition-colors",
-    isActive ? "text-gold-400" : "text-bone-200 hover:text-gold-400",
+    "relative font-display text-[11px] font-bold uppercase tracking-[0.18em] transition-colors duration-300",
+    isActive ? "text-gold-400" : "text-bone-50/80 hover:text-gold-400",
   );
 }
 
@@ -55,7 +55,7 @@ function AccountMenu() {
 
   if (!user) {
     return (
-      <Button asChild variant="secondary" size="sm">
+      <Button asChild variant="ghost" size="sm" className="text-bone-50 hover:bg-white/10 hover:text-gold-400">
         <Link to="/login">
           <SignIn size={16} weight="bold" /> Ingresar
         </Link>
@@ -68,10 +68,10 @@ function AccountMenu() {
       <DropdownMenuTrigger asChild>
         <button
           type="button"
-          className="flex items-center gap-2.5 rounded-pill border border-ink-700 py-1 pl-1 pr-3 transition-colors hover:border-ink-600 hover:bg-ink-850"
+          className="flex items-center gap-2.5 rounded-pill border border-white/10 bg-white/5 py-1 pl-1 pr-3 backdrop-blur-sm transition-colors hover:border-gold-500/50 hover:bg-white/10"
         >
           <Avatar name={user.username} className="size-7" />
-          <span className="hidden font-display text-xs font-bold uppercase tracking-[0.12em] text-bone-100 sm:block">
+          <span className="hidden font-display text-[11px] font-bold uppercase tracking-[0.12em] text-bone-100 sm:block">
             {user.username}
           </span>
         </button>
@@ -120,12 +120,12 @@ function MobileMenu() {
           variant="ghost"
           size="icon"
           aria-label="Abrir menú"
-          className="lg:hidden"
+          className="text-bone-50 hover:bg-white/10 lg:hidden"
         >
           <List size={22} weight="bold" />
         </Button>
       </DialogTrigger>
-      <DialogContent className="max-w-sm">
+      <DialogContent className="max-w-sm border-ink-700 bg-ink-900">
         <DialogTitle>Menú</DialogTitle>
         <nav className="flex flex-col gap-1 py-2">
           {NAV_LINKS.map((link) => (
@@ -137,8 +137,8 @@ function MobileMenu() {
                 cn(
                   "rounded-control px-3 py-3 font-display text-sm font-bold uppercase tracking-[0.14em] transition-colors",
                   isActive
-                    ? "bg-ink-800 text-gold-400"
-                    : "text-bone-100 hover:bg-ink-850",
+                    ? "bg-gold-500 text-ink-950"
+                    : "text-bone-100 hover:bg-ink-800",
                 )
               }
             >
@@ -150,7 +150,7 @@ function MobileMenu() {
               <NavLink
                 to="/cuenta"
                 onClick={() => setOpen(false)}
-                className="rounded-control px-3 py-3 font-display text-sm font-bold uppercase tracking-[0.14em] text-bone-100 transition-colors hover:bg-ink-850"
+                className="rounded-control px-3 py-3 font-display text-sm font-bold uppercase tracking-[0.14em] text-bone-100 transition-colors hover:bg-ink-800"
               >
                 Mi cuenta
               </NavLink>
@@ -158,7 +158,7 @@ function MobileMenu() {
                 <NavLink
                   to="/admin"
                   onClick={() => setOpen(false)}
-                  className="rounded-control px-3 py-3 font-display text-sm font-bold uppercase tracking-[0.14em] text-bone-100 transition-colors hover:bg-ink-850"
+                  className="rounded-control px-3 py-3 font-display text-sm font-bold uppercase tracking-[0.14em] text-bone-100 transition-colors hover:bg-ink-800"
                 >
                   Panel de administración
                 </NavLink>
@@ -168,7 +168,7 @@ function MobileMenu() {
             <NavLink
               to="/login"
               onClick={() => setOpen(false)}
-              className="rounded-control px-3 py-3 font-display text-sm font-bold uppercase tracking-[0.14em] text-gold-400 transition-colors hover:bg-ink-850"
+              className="rounded-control px-3 py-3 font-display text-sm font-bold uppercase tracking-[0.14em] text-gold-400 transition-colors hover:bg-ink-800"
             >
               Ingresar
             </NavLink>
@@ -181,11 +181,11 @@ function MobileMenu() {
 
 export function SiteHeader() {
   return (
-    <header className="sticky top-0 z-40 border-b border-ink-700 bg-ink-950/85 backdrop-blur-md">
+    <header className="fixed top-0 z-40 w-full border-b border-white/10 bg-ink-950/60 backdrop-blur-lg">
       <div className="container-page flex h-16 items-center justify-between gap-6">
         <Logo />
 
-        <nav className="hidden items-center gap-8 lg:flex">
+        <nav className="hidden items-center gap-10 lg:flex">
           {NAV_LINKS.map((link) => (
             <NavLink key={link.to} to={link.to} className={navLinkClass}>
               {link.label}

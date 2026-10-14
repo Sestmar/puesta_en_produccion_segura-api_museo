@@ -2,8 +2,8 @@
 
 /*
  * Sistema de diseño — Museo
- * Estética: lienzo off-black, un único acento dorado, display en mayúsculas.
- * Paleta y tipografía inspiradas en la identidad de ED SportLine.
+ * Estética: dark luxury inspirada en ED SportLine.
+ * Negro intenso, blanco puro, dorado brillante, transiciones suaves.
  */
 @theme {
   /* Tipografía */
@@ -11,32 +11,32 @@
   --font-sans: "Red Hat Text", ui-sans-serif, system-ui, sans-serif;
   --font-mono: ui-monospace, "Cascadia Mono", "SFMono-Regular", Menlo, monospace;
 
-  /* Lienzo oscuro (off-black, nunca negro puro) */
-  --color-ink-950: #0c0c0d;
-  --color-ink-900: #181819;
-  --color-ink-850: #1e1e20;
-  --color-ink-800: #242427;
-  --color-ink-750: #2a2a2e;
-  --color-ink-700: #323236;
-  --color-ink-600: #3f3f45;
+  /* Lienzo oscuro (ED SportLine style — negro puro y grises profundos) */
+  --color-ink-950: #050505;
+  --color-ink-900: #0a0a0a;
+  --color-ink-850: #111111;
+  --color-ink-800: #181818;
+  --color-ink-750: #1f1f1f;
+  --color-ink-700: #2a2a2a;
+  --color-ink-600: #3a3a3a;
 
   /* Neutros claros */
-  --color-bone-50: #f6f5f2;
-  --color-bone-100: #ece9e3;
-  --color-bone-200: #ddd9d0;
-  --color-bone-300: #c8c3b7;
-  --color-mute-400: #939393;
+  --color-bone-50: #ffffff;
+  --color-bone-100: #f5f5f5;
+  --color-bone-200: #e5e5e5;
+  --color-bone-300: #cccccc;
+  --color-mute-400: #999999;
   --color-mute-500: #757575;
-  --color-mute-600: #565658;
+  --color-mute-600: #555555;
 
-  /* Acento dorado (único) */
-  --color-gold-300: #f2d29a;
-  --color-gold-400: #edbd74;
-  --color-gold-500: #ce8c19;
-  --color-gold-600: #a86f10;
-  --color-gold-700: #7c520e;
+  /* Acento dorado brillante */
+  --color-gold-300: #ffe066;
+  --color-gold-400: #ffd43b;
+  --color-gold-500: #fcc419;
+  --color-gold-600: #fab005;
+  --color-gold-700: #f08c00;
 
-  /* Semánticos (uso restringido: éxito / error / info) */
+  /* Semánticos */
   --color-success-400: #55c98a;
   --color-success-500: #2fa96a;
   --color-danger-400: #ef6b5e;
@@ -44,15 +44,15 @@
   --color-danger-600: #b03328;
   --color-info-400: #6ba7e0;
 
-  /* Radios — regla documentada:
-   * interactivos (botones/badges) = pill; superficies = 16px; controles = 12px */
+  /* Radios */
   --radius-card: 16px;
   --radius-control: 12px;
   --radius-pill: 9999px;
 
   /* Movimiento */
   --animate-marquee: marquee 34s linear infinite;
-  --animate-fade-in: fade-in 160ms ease-out;
+  --animate-fade-in: fade-in 600ms ease-out forwards;
+  --animate-fade-up: fade-up 700ms cubic-bezier(0.16, 1, 0.3, 1) forwards;
   --animate-pop-in: pop-in 180ms cubic-bezier(0.16, 1, 0.3, 1);
   --animate-slide-in: slide-in 220ms cubic-bezier(0.16, 1, 0.3, 1);
 }
@@ -72,6 +72,17 @@
   }
   to {
     opacity: 1;
+  }
+}
+
+@keyframes fade-up {
+  from {
+    opacity: 0;
+    transform: translateY(24px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
   }
 }
 
@@ -124,8 +135,8 @@
   h3,
   h4 {
     font-family: var(--font-display);
-    font-weight: 800;
-    letter-spacing: -0.01em;
+    font-weight: 900;
+    letter-spacing: -0.02em;
   }
 
   ::selection {
@@ -133,7 +144,6 @@
     color: var(--color-ink-950);
   }
 
-  /* Foco visible y consistente en toda la app */
   :focus-visible {
     outline: 2px solid var(--color-gold-400);
     outline-offset: 2px;
@@ -150,14 +160,14 @@
 @layer utilities {
   .container-page {
     width: 100%;
-    max-width: 1400px;
+    max-width: 1440px;
     margin-inline: auto;
     padding-inline: 1.25rem;
   }
 
   @media (min-width: 768px) {
     .container-page {
-      padding-inline: 2rem;
+      padding-inline: 2.5rem;
     }
   }
 
@@ -165,7 +175,6 @@
     text-wrap: balance;
   }
 
-  /* Ocultar scrollbar en carruseles horizontales */
   .no-scrollbar {
     -ms-overflow-style: none;
     scrollbar-width: none;
@@ -178,16 +187,63 @@
     animation-play-state: paused;
   }
 
-  /* Tratamiento editorial de imágenes: escala de grises sutil que revela color al interactuar */
+  /* Animaciones de entrada */
+  .animate-fade-up {
+    animation: fade-up 700ms cubic-bezier(0.16, 1, 0.3, 1) forwards;
+  }
+
+  .animate-fade-up-delay-1 {
+    animation: fade-up 700ms cubic-bezier(0.16, 1, 0.3, 1) 100ms forwards;
+    opacity: 0;
+  }
+
+  .animate-fade-up-delay-2 {
+    animation: fade-up 700ms cubic-bezier(0.16, 1, 0.3, 1) 200ms forwards;
+    opacity: 0;
+  }
+
+  .animate-fade-up-delay-3 {
+    animation: fade-up 700ms cubic-bezier(0.16, 1, 0.3, 1) 300ms forwards;
+    opacity: 0;
+  }
+
+  /* Tratamiento editorial de imágenes */
   .artwork-media {
-    filter: grayscale(0.35) contrast(1.05);
-    transition: filter 500ms cubic-bezier(0.16, 1, 0.3, 1),
-      transform 700ms cubic-bezier(0.16, 1, 0.3, 1);
+    filter: grayscale(0.25) contrast(1.05);
+    transition: filter 600ms cubic-bezier(0.16, 1, 0.3, 1),
+      transform 800ms cubic-bezier(0.16, 1, 0.3, 1);
   }
   .group:hover .artwork-media,
   .artwork-media:hover {
     filter: grayscale(0) contrast(1);
-    transform: scale(1.04);
+    transform: scale(1.08);
+  }
+
+  /* Hover lift para cards */
+  .hover-lift {
+    transition: transform 400ms cubic-bezier(0.16, 1, 0.3, 1),
+      box-shadow 400ms cubic-bezier(0.16, 1, 0.3, 1);
+  }
+  .hover-lift:hover {
+    transform: translateY(-6px);
+    box-shadow: 0 20px 40px -12px rgba(0, 0, 0, 0.5);
+  }
+
+  /* Botón dorado brillante */
+  .btn-gold {
+    background: linear-gradient(135deg, var(--color-gold-400), var(--color-gold-600));
+    color: var(--color-ink-950);
+    transition: transform 200ms ease, filter 200ms ease, box-shadow 200ms ease;
+  }
+  .btn-gold:hover {
+    transform: translateY(-2px);
+    filter: brightness(1.08);
+    box-shadow: 0 12px 28px -8px rgba(252, 196, 25, 0.35);
+  }
+
+  /* Overlay gradient para heroes */
+  .overlay-ed {
+    background: linear-gradient(to top, rgba(5, 5, 5, 0.95) 0%, rgba(5, 5, 5, 0.6) 50%, rgba(5, 5, 5, 0.3) 100%);
   }
 }
 
@@ -204,6 +260,9 @@
     transition: none;
   }
   .group:hover .artwork-media {
+    transform: none;
+  }
+  .hover-lift:hover {
     transform: none;
   }
 }
