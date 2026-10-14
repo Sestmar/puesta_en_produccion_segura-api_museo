@@ -127,12 +127,12 @@ def seed() -> None:
 
                 # Room
                 department = item.get("department_title") or "Colección general"
-                if department not in room_cache:
-                    existing_room = db.query(Room).filter(Room.name == department).first()
+                room_name, floor, description = _room_for_department(department)
+                if room_name not in room_cache:
+                    existing_room = db.query(Room).filter(Room.name == room_name).first()
                     if existing_room:
-                        room_cache[department] = existing_room
+                        room_cache[room_name] = existing_room
                     else:
-                        room_name, floor, description = _room_for_department(department)
                         room = Room(
                             name=room_name,
                             floor=floor,
@@ -140,7 +140,7 @@ def seed() -> None:
                         )
                         db.add(room)
                         db.flush()
-                        room_cache[department] = room
+                        room_cache[room_name] = room
 
                 # Artwork
                 title = item.get("title") or "Sin título"
@@ -155,7 +155,7 @@ def seed() -> None:
                     technique=(item.get("medium_display") or "")[:80] or None,
                     description=(item.get("medium_display") or "")[:500] or None,
                     artist_id=artist_cache[artist_name].id,
-                    room_id=room_cache[department].id,
+                    room_id=room_cache[room_name].id,
                 )
                 db.add(artwork)
 
