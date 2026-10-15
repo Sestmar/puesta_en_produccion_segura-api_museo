@@ -14,7 +14,17 @@ from app.middleware import (
     SecurityHeadersMiddleware,
 )
 from app.ratelimit import RateLimitMiddleware, limiter
-from app.routers import artists, artworks, audit, auth, health, metrics, rooms, users
+from app.routers import (
+    artists,
+    artworks,
+    audit,
+    auth,
+    favorites,
+    health,
+    metrics,
+    rooms,
+    users,
+)
 
 configure_logging(settings.log_level)
 
@@ -60,3 +70,4 @@ app.include_router(users.router)
 app.include_router(artists.router)
 app.include_router(rooms.router)
 app.include_router(artworks.router)
+app.include_router(favorites.router)

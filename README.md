@@ -7,6 +7,7 @@ API REST para un catálogo de museo construida con FastAPI, diseñada siguiendo 
 - **Entidades**: artistas, salas y obras (con relaciones e integridad referencial)
 - **Autenticación**: flujo de contraseña OAuth2 con *access token* JWT de corta durada (30 min) y *refresh token* opaco entregado en una cookie `httpOnly` + `Secure` + `SameSite`. Revocar la sesión (logout, cambio de contraseña, detección de reuso o cierre de todas las sesiones) invalida el acceso al instante
 - **Autorización**: tres roles — `admin` (todo, incluidos usuarios y auditoría), `manager` (gestiona el catálogo: obras, artistas y salas) y `client` (usuario final, solo lectura); los usuarios no autenticados pueden explorar el catálogo
+- **Favoritos por usuario**: cualquier usuario autenticado guarda obras en `/me/favorites`; el propietario se toma siempre del access token y nunca de la URL o del cuerpo, por lo que no es posible leer ni modificar los favoritos de otra persona (sin superficie IDOR)
 - **Gestión de usuarios** (solo admin): `GET /users` para listar, y `PATCH /users/{id}` para cambiar el rol o activar/desactivar una cuenta. Desactivar una cuenta revoca sus sesiones en el acto y bloquea el login (con el mismo error genérico, sin revelar el motivo); un admin no puede modificarse a sí mismo, lo que evita el auto-bloqueo
 - **Cambio de contraseña**: `PUT /auth/password` exige la contraseña actual, aplica la misma política de complejidad y revoca todas las sesiones del usuario para forzar el re-login en todos sus dispositivos
 - **Sesiones**: `GET`/`DELETE /auth/sessions` listan y **cierran todas** las sesiones del solicitante (cerrar todas invalida también la del propio solicitante); `DELETE /auth/sessions/{id}` revoca una puntual. Las sesiones activas por usuario están acotadas (`MAX_SESSIONS_PER_USER`, por defecto 10): al superarlo se revocan las más antiguas al iniciar una nueva sesión
@@ -175,9 +176,13 @@ curl -X POST http://127.0.0.1:8000/artists ^
 | GET | `/audit/verify` | admin | Recalcular la cadena de auditoría y reportar el primer registro alterado |
 | GET | `/artists`, `/rooms`, `/artworks` | público | Listar (paginado, filtrable) |
 | GET | `/artists/{id}`, `/rooms/{id}`, `/artworks/{id}` | público | Detalle (404 si no existe) |
-| POST | `/artists`, `/rooms`, `/artworks` | admin | Crear (201) |
-| PUT | `/artists/{id}`, `/rooms/{id}`, `/artworks/{id}` | admin | Actualización parcial |
-| DELETE | `/artists/{id}`, `/rooms/{id}`, `/artworks/{id}` | admin | Eliminar (204) |
+| POST | `/artists`, `/rooms`, `/artworks` | admin o manager | Crear (201) |
+| PUT | `/artists/{id}`, `/rooms/{id}`, `/artworks/{id}` | admin o manager | Actualización parcial |
+| DELETE | `/artists/{id}`, `/rooms/{id}`, `/artworks/{id}` | admin o manager | Eliminar (204) |
+| GET | `/me/favorites` | bearer (cualquier rol) | Obras favoritas del solicitante (paginado, más recientes primero) |
+| GET | `/me/favorites/ids` | bearer (cualquier rol) | Ids de las obras favoritas del solicitante |
+| PUT | `/me/favorites/{artwork_id}` | bearer (cualquier rol) | Guardar una obra en favoritos (idempotente, 204; 404 si la obra no existe) |
+| DELETE | `/me/favorites/{artwork_id}` | bearer (cualquier rol) | Quitar una obra de favoritos (idempotente, 204) |
 | GET | `/health` | público | Comprobación de liveness (sin acceso a la base de datos) |
 | GET | `/health/ready` | público | Comprobación de readiness (consulta la base de datos; 503 si está caída) |
 | GET | `/metrics` | público | Métricas Prometheus en texto de exposición (exento del límite de tasa) |

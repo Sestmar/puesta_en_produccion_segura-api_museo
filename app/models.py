@@ -139,3 +139,19 @@ class Artwork(Base):
 
     artist: Mapped["Artist"] = relationship(back_populates="artworks")
     room: Mapped["Room | None"] = relationship(back_populates="artworks")
+
+
+class Favorite(Base):
+    """An artwork saved by a user. Rows vanish with either side (DB cascade)."""
+
+    __tablename__ = "favorites"
+
+    user_id: Mapped[int] = mapped_column(
+        ForeignKey("users.id", ondelete="CASCADE"), primary_key=True
+    )
+    artwork_id: Mapped[int] = mapped_column(
+        ForeignKey("artworks.id", ondelete="CASCADE"), primary_key=True, index=True
+    )
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now()
+    )
