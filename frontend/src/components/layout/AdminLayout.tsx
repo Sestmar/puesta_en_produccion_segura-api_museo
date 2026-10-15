@@ -19,21 +19,31 @@ import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useToast } from "@/components/ui/toast";
 import { useAuth } from "@/hooks/useAuth";
+import { ROLE_LABELS } from "@/lib/format";
 import { cn } from "@/lib/utils";
 
-const NAV_ITEMS: { label: string; to: string; icon: typeof Gauge; end?: boolean }[] = [
+const NAV_ITEMS: {
+  label: string;
+  to: string;
+  icon: typeof Gauge;
+  end?: boolean;
+  adminOnly?: boolean;
+}[] = [
   { label: "Resumen", to: "/admin", icon: Gauge, end: true },
   { label: "Obras", to: "/admin/obras", icon: ImageIcon },
   { label: "Artistas", to: "/admin/artistas", icon: PaintBrush },
   { label: "Salas", to: "/admin/salas", icon: GearSix },
-  { label: "Usuarios", to: "/admin/usuarios", icon: UsersIcon },
-  { label: "Auditoría", to: "/admin/auditoria", icon: List },
+  { label: "Usuarios", to: "/admin/usuarios", icon: UsersIcon, adminOnly: true },
+  { label: "Auditoría", to: "/admin/auditoria", icon: List, adminOnly: true },
 ];
 
 function AdminNav({ onNavigate }: { onNavigate?: () => void }) {
+  const { isAdmin } = useAuth();
+  const items = NAV_ITEMS.filter((item) => isAdmin || !item.adminOnly);
+
   return (
     <nav className="flex flex-col gap-1">
-      {NAV_ITEMS.map((item) => (
+      {items.map((item) => (
         <NavLink
           key={item.to}
           to={item.to}
@@ -80,8 +90,8 @@ function SidebarBody({ onNavigate }: { onNavigate?: () => void }) {
             <Avatar name={user.username} className="size-8" />
             <div className="min-w-0 flex-1">
               <p className="truncate text-sm font-bold text-bone-50">{user.username}</p>
-              <Badge variant="gold" className="mt-0.5">
-                Administrador
+              <Badge variant={user.role === "admin" ? "gold" : "neutral"} className="mt-0.5">
+                {ROLE_LABELS[user.role]}
               </Badge>
             </div>
             <Button
@@ -108,6 +118,7 @@ function SidebarBody({ onNavigate }: { onNavigate?: () => void }) {
 
 export function AdminLayout() {
   const [mobileOpen, setMobileOpen] = useState(false);
+  const { isAdmin } = useAuth();
 
   return (
     <div className="flex min-h-dvh bg-ink-950">
@@ -148,7 +159,7 @@ export function AdminLayout() {
             <List size={22} weight="bold" />
           </Button>
           <span className="font-display text-sm font-bold uppercase tracking-[0.18em] text-bone-50">
-            Administración
+            {isAdmin ? "Administración" : "Gestión del catálogo"}
           </span>
         </header>
 

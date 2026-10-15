@@ -8,6 +8,8 @@ export interface AuthContextValue {
   user: User | null;
   status: AuthStatus;
   isAdmin: boolean;
+  /** Admin o gestor: puede editar obras, artistas y salas. */
+  canManageCatalog: boolean;
   login: (username: string, password: string) => Promise<void>;
   logout: () => Promise<void>;
   refreshUser: () => Promise<void>;

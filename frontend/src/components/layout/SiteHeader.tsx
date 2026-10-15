@@ -48,7 +48,7 @@ function navLinkClass({ isActive }: { isActive: boolean }): string {
 }
 
 function AccountMenu() {
-  const { user, status, isAdmin, logout } = useAuth();
+  const { user, status, isAdmin, canManageCatalog, logout } = useAuth();
   const navigate = useNavigate();
   const { success } = useToast();
 
@@ -100,9 +100,10 @@ function AccountMenu() {
         <DropdownMenuItem onSelect={() => navigate("/cuenta")}>
           <UserIcon size={16} weight="bold" /> Mi cuenta
         </DropdownMenuItem>
-        {isAdmin ? (
+        {canManageCatalog ? (
           <DropdownMenuItem onSelect={() => navigate("/admin")}>
-            <GearSix size={16} weight="bold" /> Panel de administración
+            <GearSix size={16} weight="bold" />{" "}
+            {isAdmin ? "Panel de administración" : "Gestión del catálogo"}
           </DropdownMenuItem>
         ) : null}
         <DropdownMenuSeparator />
@@ -124,7 +125,7 @@ function AccountMenu() {
 
 function MobileMenu() {
   const [open, setOpen] = useState(false);
-  const { user, isAdmin } = useAuth();
+  const { user, isAdmin, canManageCatalog } = useAuth();
 
   return (
     <Dialog open={open} onOpenChange={setOpen}>
@@ -174,13 +175,13 @@ function MobileMenu() {
               >
                 Mi cuenta
               </NavLink>
-              {isAdmin ? (
+              {canManageCatalog ? (
                 <NavLink
                   to="/admin"
                   onClick={() => setOpen(false)}
                   className="rounded-control px-3 py-3 font-display text-sm font-bold uppercase tracking-[0.14em] text-bone-100 transition-colors hover:bg-ink-800"
                 >
-                  Panel de administración
+                  {isAdmin ? "Panel de administración" : "Gestión del catálogo"}
                 </NavLink>
               ) : null}
             </>

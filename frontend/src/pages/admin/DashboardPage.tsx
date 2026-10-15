@@ -23,7 +23,9 @@ import {
 } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useArtists, useArtworks, useAuditLogs, useAuditVerification, useRooms, useUsers } from "@/hooks/queries";
+import { useAuth } from "@/hooks/useAuth";
 import { formatDateTime, formatNumber, humanizeAction } from "@/lib/format";
+import { cn } from "@/lib/utils";
 
 interface StatCardProps {
   label: string;
@@ -127,23 +129,92 @@ function AuditStatusCard() {
   );
 }
 
+// Las secciones de usuarios y auditoría son componentes propios para que sus
+// queries (solo admin en el backend) no se lancen siquiera para un gestor.
+function UsersStatCard() {
+  const usersQuery = useUsers({ limit: 1 });
+  return (
+    <StatCard
+      label="Usuarios"
+      icon={UsersIcon}
+      to="/admin/usuarios"
+      value={usersQuery.data?.total}
+      pending={usersQuery.isPending}
+    />
+  );
+}
+
+function RecentActivityCard() {
+  const auditQuery = useAuditLogs({ limit: 6 });
+  const recent = auditQuery.data?.items ?? [];
+
+  return (
+    <Card>
+      <CardHeader className="flex-row items-center justify-between gap-4">
+        <div className="flex flex-col gap-1">
+          <CardTitle>Actividad reciente</CardTitle>
+          <CardDescription>Últimos eventos registrados en el sistema.</CardDescription>
+        </div>
+        <Button asChild variant="ghost" size="sm">
+          <Link to="/admin/auditoria">
+            Ver todo <ArrowRight size={14} weight="bold" />
+          </Link>
+        </Button>
+      </CardHeader>
+      <CardContent className="flex flex-col gap-1">
+        {auditQuery.isPending ? (
+          <>
+            <Skeleton className="h-12 w-full" />
+            <Skeleton className="h-12 w-full" />
+            <Skeleton className="h-12 w-full" />
+          </>
+        ) : recent.length === 0 ? (
+          <p className="py-6 text-center text-sm text-mute-400">Sin eventos todavía.</p>
+        ) : (
+          recent.map((entry) => (
+            <div
+              key={entry.id}
+              className="flex items-center justify-between gap-3 border-b border-ink-800 py-2.5 last:border-0"
+            >
+              <div className="flex min-w-0 flex-col">
+                <span className="truncate text-sm text-bone-100">
+                  {humanizeAction(entry.action)}
+                </span>
+                <span className="truncate text-xs text-mute-500">
+                  {entry.actor ?? "sistema"} · {formatDateTime(entry.created_at)}
+                </span>
+              </div>
+              {entry.resource_type ? (
+                <Badge variant="outline" className="shrink-0">
+                  {entry.resource_type}
+                </Badge>
+              ) : null}
+            </div>
+          ))
+        )}
+      </CardContent>
+    </Card>
+  );
+}
+
 export function DashboardPage() {
+  const { isAdmin } = useAuth();
   const artworksQuery = useArtworks({ limit: 1 });
   const artistsQuery = useArtists({ limit: 1 });
   const roomsQuery = useRooms({ limit: 1 });
-  const usersQuery = useUsers({ limit: 1 });
-  const auditQuery = useAuditLogs({ limit: 6 });
-
-  const recent = auditQuery.data?.items ?? [];
 
   return (
     <div className="flex flex-col gap-8">
       <PageHeader
         title="Resumen"
-        description="Estado general del acervo y de la seguridad del sistema."
+        description={
+          isAdmin
+            ? "Estado general del acervo y de la seguridad del sistema."
+            : "Estado general del acervo que gestionas."
+        }
       />
 
-      <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-4">
+      <div className={cn("grid gap-5 sm:grid-cols-2", isAdmin ? "lg:grid-cols-4" : "lg:grid-cols-3")}>
         <StatCard
           label="Obras"
           icon={ImageIcon}
@@ -165,64 +236,15 @@ export function DashboardPage() {
           value={roomsQuery.data?.total}
           pending={roomsQuery.isPending}
         />
-        <StatCard
-          label="Usuarios"
-          icon={UsersIcon}
-          to="/admin/usuarios"
-          value={usersQuery.data?.total}
-          pending={usersQuery.isPending}
-        />
+        {isAdmin ? <UsersStatCard /> : null}
       </div>
 
-      <div className="grid gap-8 lg:grid-cols-2">
-        <AuditStatusCard />
-
-        <Card>
-          <CardHeader className="flex-row items-center justify-between gap-4">
-            <div className="flex flex-col gap-1">
-              <CardTitle>Actividad reciente</CardTitle>
-              <CardDescription>Últimos eventos registrados en el sistema.</CardDescription>
-            </div>
-            <Button asChild variant="ghost" size="sm">
-              <Link to="/admin/auditoria">
-                Ver todo <ArrowRight size={14} weight="bold" />
-              </Link>
-            </Button>
-          </CardHeader>
-          <CardContent className="flex flex-col gap-1">
-            {auditQuery.isPending ? (
-              <>
-                <Skeleton className="h-12 w-full" />
-                <Skeleton className="h-12 w-full" />
-                <Skeleton className="h-12 w-full" />
-              </>
-            ) : recent.length === 0 ? (
-              <p className="py-6 text-center text-sm text-mute-400">Sin eventos todavía.</p>
-            ) : (
-              recent.map((entry) => (
-                <div
-                  key={entry.id}
-                  className="flex items-center justify-between gap-3 border-b border-ink-800 py-2.5 last:border-0"
-                >
-                  <div className="flex min-w-0 flex-col">
-                    <span className="truncate text-sm text-bone-100">
-                      {humanizeAction(entry.action)}
-                    </span>
-                    <span className="truncate text-xs text-mute-500">
-                      {entry.actor ?? "sistema"} · {formatDateTime(entry.created_at)}
-                    </span>
-                  </div>
-                  {entry.resource_type ? (
-                    <Badge variant="outline" className="shrink-0">
-                      {entry.resource_type}
-                    </Badge>
-                  ) : null}
-                </div>
-              ))
-            )}
-          </CardContent>
-        </Card>
-      </div>
+      {isAdmin ? (
+        <div className="grid gap-8 lg:grid-cols-2">
+          <AuditStatusCard />
+          <RecentActivityCard />
+        </div>
+      ) : null}
     </div>
   );
 }

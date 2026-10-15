@@ -103,6 +103,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       user,
       status,
       isAdmin: user?.role === "admin",
+      canManageCatalog: user?.role === "admin" || user?.role === "manager",
       login,
       logout,
       refreshUser,

@@ -2,7 +2,7 @@ import { Routes, Route } from "react-router-dom";
 
 import { PublicLayout } from "./components/layout/PublicLayout";
 import { AdminLayout } from "./components/layout/AdminLayout";
-import { RequireAuth, RequireAdmin } from "./components/common/guards";
+import { RequireAdmin, RequireAuth, RequireStaff } from "./components/common/guards";
 
 import { HomePage } from "./pages/public/HomePage";
 import { ArtworksPage } from "./pages/public/ArtworksPage";
@@ -59,17 +59,31 @@ export default function App() {
       <Route
         path="/admin"
         element={
-          <RequireAdmin>
+          <RequireStaff>
             <AdminLayout />
-          </RequireAdmin>
+          </RequireStaff>
         }
       >
         <Route index element={<DashboardPage />} />
         <Route path="artistas" element={<AdminArtistsPage />} />
         <Route path="salas" element={<AdminRoomsPage />} />
         <Route path="obras" element={<AdminArtworksPage />} />
-        <Route path="usuarios" element={<AdminUsersPage />} />
-        <Route path="auditoria" element={<AdminAuditPage />} />
+        <Route
+          path="usuarios"
+          element={
+            <RequireAdmin inline>
+              <AdminUsersPage />
+            </RequireAdmin>
+          }
+        />
+        <Route
+          path="auditoria"
+          element={
+            <RequireAdmin inline>
+              <AdminAuditPage />
+            </RequireAdmin>
+          }
+        />
       </Route>
     </Routes>
   );
