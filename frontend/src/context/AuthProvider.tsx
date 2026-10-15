@@ -1,7 +1,13 @@
 import { useCallback, useEffect, useMemo, useState, type ReactNode } from "react";
 
 import { AuthContext, type AuthStatus } from "@/context/auth-context";
-import { setAccessToken, setAuthHandlers } from "@/lib/api/client";
+import {
+  hasSessionHint,
+  refreshAccessToken,
+  setAccessToken,
+  setAuthHandlers,
+  setSessionHint,
+} from "@/lib/api/client";
 import { authApi } from "@/lib/api/endpoints";
 import type { TokenOut, User } from "@/lib/api/types";
 
@@ -11,19 +17,23 @@ import type { TokenOut, User } from "@/lib/api/types";
  * El *access token* vive en memoria y se pierde al recargar. El *refresh token*
  * nunca es accesible por JavaScript: el backend lo coloca en una cookie
  * httpOnly, Secure y SameSite, y el navegador la envía automáticamente en
- * /auth/refresh. Al arrancar, intentamos renovar el access token con la cookie
- * y, si funciona, recuperamos el usuario.
+ * /auth/refresh. Al arrancar, si hubo una sesión previa, renovamos el access
+ * token con la cookie y, si funciona, recuperamos el usuario.
  */
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
-  const [status, setStatus] = useState<AuthStatus>("loading");
+  const [status, setStatus] = useState<AuthStatus>(() =>
+    hasSessionHint() ? "loading" : "anonymous",
+  );
 
   const persistTokens = useCallback((token: TokenOut) => {
     setAccessToken(token.access_token);
+    setSessionHint(true);
   }, []);
 
   const clearSession = useCallback(() => {
     setAccessToken(null);
+    setSessionHint(false);
     setUser(null);
     setStatus("anonymous");
   }, []);
@@ -39,36 +49,29 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, [clearSession]);
 
   // Restauración de sesión al arrancar: la cookie httpOnly viaja sola.
+  // Tras recargar no hay access token en memoria, así que vamos directos al
+  // refresh (deduplicado, por lo que StrictMode no duplica la petición).
   useEffect(() => {
+    if (!hasSessionHint()) return;
     let active = true;
 
-    authApi
-      .me()
-      .then((me) => {
+    refreshAccessToken()
+      .then(async (token) => {
+        // Si el refresh falla, onAuthError ya ha limpiado la sesión.
+        if (!token || !active) return;
+        const me = await authApi.me();
         if (!active) return;
         setUser(me);
         setStatus("authenticated");
       })
       .catch(() => {
-        authApi
-          .refresh()
-          .then(async (token) => {
-            if (!active) return;
-            persistTokens(token);
-            const me = await authApi.me();
-            if (!active) return;
-            setUser(me);
-            setStatus("authenticated");
-          })
-          .catch(() => {
-            if (active) clearSession();
-          });
+        if (active) clearSession();
       });
 
     return () => {
       active = false;
     };
-  }, [clearSession, persistTokens]);
+  }, [clearSession]);
 
   const login = useCallback(
     async (username: string, password: string) => {

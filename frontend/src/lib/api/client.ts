@@ -42,12 +42,40 @@ export function setAccessToken(token: string | null): void {
 }
 
 /* ------------------------------------------------------------------ */
+/* Indicador de sesión previa                                          */
+/* ------------------------------------------------------------------ */
+
+/**
+ * La cookie del refresh token es httpOnly, así que JavaScript no puede saber
+ * si existe. Este indicador (no es un secreto, solo un booleano) evita lanzar
+ * /auth/refresh en cada carga de un visitante que nunca inició sesión.
+ */
+const SESSION_HINT_KEY = "museo:has-session";
+
+export function hasSessionHint(): boolean {
+  try {
+    return localStorage.getItem(SESSION_HINT_KEY) === "1";
+  } catch {
+    return false;
+  }
+}
+
+export function setSessionHint(active: boolean): void {
+  try {
+    if (active) localStorage.setItem(SESSION_HINT_KEY, "1");
+    else localStorage.removeItem(SESSION_HINT_KEY);
+  } catch {
+    // localStorage no disponible (modo privado estricto): solo se pierde la optimización.
+  }
+}
+
+/* ------------------------------------------------------------------ */
 /* Refresh silencioso con deduplicación                                */
 /* ------------------------------------------------------------------ */
 
 let refreshInFlight: Promise<string | null> | null = null;
 
-async function refreshAccessToken(): Promise<string | null> {
+export async function refreshAccessToken(): Promise<string | null> {
   if (refreshInFlight) return refreshInFlight;
 
   refreshInFlight = (async () => {
