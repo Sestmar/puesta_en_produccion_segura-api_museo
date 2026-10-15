@@ -1,5 +1,6 @@
 import {
   GearSix,
+  Heart,
   List,
   SignIn,
   SignOut,
@@ -93,6 +94,9 @@ function AccountMenu() {
           <Badge variant={isAdmin ? "gold" : "neutral"}>{ROLE_LABELS[user.role]}</Badge>
         </DropdownMenuLabel>
         <DropdownMenuSeparator />
+        <DropdownMenuItem onSelect={() => navigate("/mi-coleccion")}>
+          <Heart size={16} weight="bold" /> Mi colección
+        </DropdownMenuItem>
         <DropdownMenuItem onSelect={() => navigate("/cuenta")}>
           <UserIcon size={16} weight="bold" /> Mi cuenta
         </DropdownMenuItem>
@@ -156,6 +160,13 @@ function MobileMenu() {
           ))}
           {user ? (
             <>
+              <NavLink
+                to="/mi-coleccion"
+                onClick={() => setOpen(false)}
+                className="rounded-control px-3 py-3 font-display text-sm font-bold uppercase tracking-[0.14em] text-bone-100 transition-colors hover:bg-ink-800"
+              >
+                Mi colección
+              </NavLink>
               <NavLink
                 to="/cuenta"
                 onClick={() => setOpen(false)}

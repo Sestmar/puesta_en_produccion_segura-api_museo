@@ -5,9 +5,11 @@ import {
   artworksApi,
   auditApi,
   authApi,
+  favoritesApi,
   roomsApi,
   usersApi,
 } from "@/lib/api/endpoints";
+import { useAuth } from "@/hooks/useAuth";
 import { qk } from "@/lib/api/queryKeys";
 import type {
   Artist,
@@ -86,6 +88,25 @@ export function useAuditVerification(): UseQueryResult<AuditVerification> {
   return useQuery({
     queryKey: qk.audit.verify,
     queryFn: () => auditApi.verify(),
+  });
+}
+
+/** Ids de las obras favoritas; inactiva (sin petición) para visitantes anónimos. */
+export function useFavoriteIds(): UseQueryResult<number[]> {
+  const { user } = useAuth();
+  return useQuery({
+    queryKey: qk.favorites.ids(user?.id ?? 0),
+    queryFn: () => favoritesApi.ids(),
+    enabled: user !== null,
+  });
+}
+
+export function useFavorites(params: ListParams = {}): UseQueryResult<Page<Artwork>> {
+  const { user } = useAuth();
+  return useQuery({
+    queryKey: qk.favorites.list(user?.id ?? 0, params),
+    queryFn: () => favoritesApi.list(params),
+    enabled: user !== null,
   });
 }
 

@@ -133,6 +133,20 @@ export const artworksApi = {
     apiRequest<void>(`/artworks/${id}`, { method: "DELETE" }),
 };
 
+/** Favoritos del usuario autenticado: el backend toma el dueño del token. */
+export const favoritesApi = {
+  list: (params: ListParams = {}) =>
+    apiRequest<Page<Artwork>>("/me/favorites", { query: toQuery(params) }),
+
+  ids: () => apiRequest<number[]>("/me/favorites/ids"),
+
+  add: (artworkId: number) =>
+    apiRequest<void>(`/me/favorites/${artworkId}`, { method: "PUT" }),
+
+  remove: (artworkId: number) =>
+    apiRequest<void>(`/me/favorites/${artworkId}`, { method: "DELETE" }),
+};
+
 export const auditApi = {
   list: (params: AuditListParams = {}) =>
     apiRequest<Page<AuditLog>>("/audit", { query: toQuery(params) }),

@@ -14,6 +14,7 @@ import { RoomDetailPage } from "./pages/public/RoomDetailPage";
 import { LoginPage } from "./pages/public/LoginPage";
 import { RegisterPage } from "./pages/public/RegisterPage";
 import { AccountPage } from "./pages/public/AccountPage";
+import { MyCollectionPage } from "./pages/public/MyCollectionPage";
 import { NotFoundPage } from "./pages/public/NotFoundPage";
 
 import { DashboardPage } from "./pages/admin/DashboardPage";
@@ -41,6 +42,14 @@ export default function App() {
           element={
             <RequireAuth>
               <AccountPage />
+            </RequireAuth>
+          }
+        />
+        <Route
+          path="mi-coleccion"
+          element={
+            <RequireAuth>
+              <MyCollectionPage />
             </RequireAuth>
           }
         />

@@ -5,6 +5,7 @@ import {
   artworksApi,
   auditApi,
   authApi,
+  favoritesApi,
   roomsApi,
   usersApi,
 } from "@/lib/api/endpoints";
@@ -168,6 +169,34 @@ export function useCloseAllSessions() {
 export function useChangePassword() {
   return useMutation({
     mutationFn: (payload: PasswordChange) => authApi.changePassword(payload),
+  });
+}
+
+/* ------------------------------- Favoritos ------------------------------ */
+
+/** Marca o desmarca una obra con actualización optimista del corazón. */
+export function useToggleFavorite(userId: number) {
+  const queryClient = useQueryClient();
+  const idsKey = qk.favorites.ids(userId);
+  return useMutation({
+    mutationFn: ({ artworkId, favorite }: { artworkId: number; favorite: boolean }) =>
+      favorite ? favoritesApi.add(artworkId) : favoritesApi.remove(artworkId),
+    onMutate: async ({ artworkId, favorite }) => {
+      await queryClient.cancelQueries({ queryKey: idsKey });
+      const previous = queryClient.getQueryData<number[]>(idsKey);
+      queryClient.setQueryData<number[]>(idsKey, (current = []) =>
+        favorite
+          ? Array.from(new Set([...current, artworkId]))
+          : current.filter((id) => id !== artworkId),
+      );
+      return { previous };
+    },
+    onError: (_error, _variables, context) => {
+      if (context?.previous) queryClient.setQueryData(idsKey, context.previous);
+    },
+    onSettled: () => {
+      void queryClient.invalidateQueries({ queryKey: qk.favorites.all });
+    },
   });
 }
 

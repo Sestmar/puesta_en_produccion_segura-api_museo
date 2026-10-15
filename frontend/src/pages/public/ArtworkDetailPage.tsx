@@ -10,6 +10,7 @@ import type { ReactNode } from "react";
 import { Link, useParams } from "react-router-dom";
 
 import { ArtworkCard } from "@/components/common/ArtworkCard";
+import { FavoriteButton } from "@/components/common/FavoriteButton";
 import { ErrorPanel } from "@/components/common/QueryState";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -131,6 +132,7 @@ export function ArtworkDetailPage() {
                 </span>
               </Link>
             ) : null}
+            <FavoriteButton artworkId={artwork.id} variant="full" />
           </div>
 
           {artwork.description ? (

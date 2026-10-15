@@ -35,6 +35,14 @@ export const qk = {
     detail: (id: number) => ["artworks", "detail", id] as const,
   },
 
+  /** Incluyen el id de usuario para que nunca se mezclen cachés entre cuentas. */
+  favorites: {
+    all: ["favorites"] as const,
+    ids: (userId: number) => ["favorites", userId, "ids"] as const,
+    list: (userId: number, params: ListParams) =>
+      ["favorites", userId, "list", params] as const,
+  },
+
   audit: {
     all: ["audit"] as const,
     list: (params: AuditListParams) => ["audit", "list", params] as const,
