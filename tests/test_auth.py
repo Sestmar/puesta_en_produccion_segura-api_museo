@@ -21,23 +21,23 @@ def test_second_register_requires_authentication(client, admin_headers):
     assert r.status_code == 401
 
 
-def test_viewer_cannot_register_users(client, viewer_headers):
+def test_client_cannot_register_users(client, client_headers):
     r = client.post(
         "/auth/register",
         json={"username": "mallory", "password": "Hacker1234"},
-        headers=viewer_headers,
+        headers=client_headers,
     )
     assert r.status_code == 403
 
 
-def test_admin_can_register_viewer(client, admin_headers):
+def test_admin_can_register_client(client, admin_headers):
     r = client.post(
         "/auth/register",
-        json={"username": "viewer2", "password": "Viewer2Pass", "role": "viewer"},
+        json={"username": "client2", "password": "Client2Pass", "role": "client"},
         headers=admin_headers,
     )
     assert r.status_code == 201
-    assert r.json()["role"] == "viewer"
+    assert r.json()["role"] == "client"
 
 
 def test_register_duplicate_username_returns_conflict(client, admin_headers):

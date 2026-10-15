@@ -9,7 +9,8 @@ from app.database import Base
 
 class Role(StrEnum):
     ADMIN = "admin"
-    VIEWER = "viewer"
+    MANAGER = "manager"
+    CLIENT = "client"
 
 
 class User(Base):
@@ -21,7 +22,7 @@ class User(Base):
     )
     hashed_password: Mapped[str] = mapped_column(String(128), nullable=False)
     role: Mapped[str] = mapped_column(
-        String(20), nullable=False, default=Role.VIEWER.value
+        String(20), nullable=False, default=Role.CLIENT.value
     )
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now()

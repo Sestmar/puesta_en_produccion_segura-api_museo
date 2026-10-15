@@ -6,7 +6,7 @@ API REST para un catálogo de museo construida con FastAPI, diseñada siguiendo 
 
 - **Entidades**: artistas, salas y obras (con relaciones e integridad referencial)
 - **Autenticación**: flujo de contraseña OAuth2 con *access token* JWT de corta durada (30 min) y *refresh token* opaco entregado en una cookie `httpOnly` + `Secure` + `SameSite`. Revocar la sesión (logout, cambio de contraseña, detección de reuso o cierre de todas las sesiones) invalida el acceso al instante
-- **Autorización**: rol `admin` para escrituras, rol `viewer` para lecturas; los usuarios no autenticados pueden explorar el catálogo
+- **Autorización**: tres roles — `admin` (todo, incluidos usuarios y auditoría), `manager` (gestiona el catálogo: obras, artistas y salas) y `client` (usuario final, solo lectura); los usuarios no autenticados pueden explorar el catálogo
 - **Gestión de usuarios** (solo admin): `GET /users` para listar, y `PATCH /users/{id}` para cambiar el rol o activar/desactivar una cuenta. Desactivar una cuenta revoca sus sesiones en el acto y bloquea el login (con el mismo error genérico, sin revelar el motivo); un admin no puede modificarse a sí mismo, lo que evita el auto-bloqueo
 - **Cambio de contraseña**: `PUT /auth/password` exige la contraseña actual, aplica la misma política de complejidad y revoca todas las sesiones del usuario para forzar el re-login en todos sus dispositivos
 - **Sesiones**: `GET`/`DELETE /auth/sessions` listan y **cierran todas** las sesiones del solicitante (cerrar todas invalida también la del propio solicitante); `DELETE /auth/sessions/{id}` revoca una puntual. Las sesiones activas por usuario están acotadas (`MAX_SESSIONS_PER_USER`, por defecto 10): al superarlo se revocan las más antiguas al iniciar una nueva sesión

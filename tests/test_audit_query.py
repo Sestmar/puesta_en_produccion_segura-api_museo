@@ -1,9 +1,9 @@
 from tests.conftest import login
 
 
-def test_list_audit_requires_admin(client, admin_headers, viewer_headers):
+def test_list_audit_requires_admin(client, admin_headers, client_headers):
     assert client.get("/audit").status_code == 401
-    assert client.get("/audit", headers=viewer_headers).status_code == 403
+    assert client.get("/audit", headers=client_headers).status_code == 403
     r = client.get("/audit", headers=admin_headers)
     assert r.status_code == 200
     data = r.json()

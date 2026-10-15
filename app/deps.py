@@ -61,6 +61,7 @@ def require_role(*roles: str):
 
 
 require_admin = require_role(Role.ADMIN.value)
+require_catalog_editor = require_role(Role.ADMIN.value, Role.MANAGER.value)
 
 
 def require_admin_or_bootstrap(

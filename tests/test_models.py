@@ -6,18 +6,18 @@ from app.models import Artist, Artwork, Role, Room, User
 
 
 def test_user_unique_username(db):
-    db.add(User(username="alice", hashed_password="x", role=Role.VIEWER.value))
+    db.add(User(username="alice", hashed_password="x", role=Role.CLIENT.value))
     db.commit()
-    db.add(User(username="alice", hashed_password="y", role=Role.VIEWER.value))
+    db.add(User(username="alice", hashed_password="y", role=Role.CLIENT.value))
     with pytest.raises(IntegrityError):
         db.commit()
 
 
-def test_user_role_defaults_to_viewer(db):
+def test_user_role_defaults_to_client(db):
     db.add(User(username="bob", hashed_password="x"))
     db.commit()
     user = db.scalar(select(User).where(User.username == "bob"))
-    assert user.role == Role.VIEWER.value
+    assert user.role == Role.CLIENT.value
 
 
 def test_artwork_requires_existing_artist(db):

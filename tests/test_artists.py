@@ -17,8 +17,8 @@ def test_create_artist_without_token_returns_401(client):
     assert r.status_code == 401
 
 
-def test_create_artist_as_viewer_returns_403(client, viewer_headers):
-    r = client.post("/artists", json={"name": "Diego Rivera"}, headers=viewer_headers)
+def test_create_artist_as_client_returns_403(client, client_headers):
+    r = client.post("/artists", json={"name": "Diego Rivera"}, headers=client_headers)
     assert r.status_code == 403
 
 

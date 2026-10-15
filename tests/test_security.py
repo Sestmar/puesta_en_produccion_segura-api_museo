@@ -37,7 +37,7 @@ def test_create_and_decode_token():
 def test_expired_token_raises():
     token = create_access_token(
         subject="alice",
-        role="viewer",
+        role="client",
         session_id=1,
         expires_delta=timedelta(seconds=-1),
     )
@@ -46,6 +46,6 @@ def test_expired_token_raises():
 
 
 def test_tampered_token_raises():
-    token = create_access_token(subject="alice", role="viewer", session_id=1)
+    token = create_access_token(subject="alice", role="client", session_id=1)
     with pytest.raises(jwt.InvalidTokenError):
         decode_token(token + "tampered")

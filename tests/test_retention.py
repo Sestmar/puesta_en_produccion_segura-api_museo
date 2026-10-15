@@ -16,7 +16,7 @@ def _make_user(db):
     user = User(
         username="retention-user",
         hashed_password=hash_password("Retention1"),
-        role="viewer",
+        role="client",
     )
     db.add(user)
     db.commit()

@@ -57,11 +57,11 @@ def test_create_artwork_with_unknown_room_rejected(client, admin_headers):
     assert r.status_code == 422
 
 
-def test_create_artwork_requires_admin(client, viewer_headers):
+def test_create_artwork_requires_admin(client, client_headers):
     r = client.post(
         "/artworks",
         json={"title": "No", "artist_id": 1},
-        headers=viewer_headers,
+        headers=client_headers,
     )
     assert r.status_code == 403
 

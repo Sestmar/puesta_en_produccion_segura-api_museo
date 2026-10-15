@@ -22,10 +22,13 @@ def _validate_password(value: str) -> str:
     return value
 
 
+RoleName = Literal["admin", "manager", "client"]
+
+
 class UserCreate(BaseModel):
     username: str = Field(min_length=3, max_length=50, pattern=r"^[a-zA-Z0-9_.-]+$")
     password: str = Field(min_length=8, max_length=72)
-    role: Literal["admin", "viewer"] = "viewer"
+    role: RoleName = "client"
 
     @field_validator("password")
     @classmethod
@@ -41,7 +44,7 @@ class UserOut(ORMModel):
 
 
 class UserUpdate(BaseModel):
-    role: Literal["admin", "viewer"] | None = None
+    role: RoleName | None = None
     is_active: bool | None = None
 
 

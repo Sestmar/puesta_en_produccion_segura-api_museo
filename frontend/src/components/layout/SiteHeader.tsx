@@ -29,6 +29,7 @@ import {
 import { Skeleton } from "@/components/ui/skeleton";
 import { useToast } from "@/components/ui/toast";
 import { useAuth } from "@/hooks/useAuth";
+import { ROLE_LABELS } from "@/lib/format";
 import { cn } from "@/lib/utils";
 
 const NAV_LINKS: { label: string; to: string }[] = [
@@ -81,7 +82,7 @@ function AccountMenu() {
           <span className="truncate normal-case tracking-normal text-bone-100">
             {user.username}
           </span>
-          <Badge variant={isAdmin ? "gold" : "neutral"}>{isAdmin ? "Admin" : "Lector"}</Badge>
+          <Badge variant={isAdmin ? "gold" : "neutral"}>{ROLE_LABELS[user.role]}</Badge>
         </DropdownMenuLabel>
         <DropdownMenuSeparator />
         <DropdownMenuItem onSelect={() => navigate("/cuenta")}>

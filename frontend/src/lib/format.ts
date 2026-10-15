@@ -1,3 +1,11 @@
+import type { Role } from "@/lib/api/types";
+
+export const ROLE_LABELS: Record<Role, string> = {
+  admin: "Administrador",
+  manager: "Gestor",
+  client: "Cliente",
+};
+
 const dateTimeFormatter = new Intl.DateTimeFormat("es-ES", {
   dateStyle: "medium",
   timeStyle: "short",

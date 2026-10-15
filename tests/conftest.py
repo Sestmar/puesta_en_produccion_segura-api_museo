@@ -78,12 +78,24 @@ def admin_headers(client):
 
 
 @pytest.fixture()
-def viewer_headers(client, admin_headers):
+def client_headers(client, admin_headers):
     r = client.post(
         "/auth/register",
-        json={"username": "viewer", "password": "ViewerPass123"},
+        json={"username": "client", "password": "ClientPass123"},
         headers=admin_headers,
     )
     assert r.status_code == 201, r.text
-    token = login(client, "viewer", "ViewerPass123").json()["access_token"]
+    token = login(client, "client", "ClientPass123").json()["access_token"]
+    return {"Authorization": f"Bearer {token}"}
+
+
+@pytest.fixture()
+def manager_headers(client, admin_headers):
+    r = client.post(
+        "/auth/register",
+        json={"username": "manager", "password": "ManagerPass123", "role": "manager"},
+        headers=admin_headers,
+    )
+    assert r.status_code == 201, r.text
+    token = login(client, "manager", "ManagerPass123").json()["access_token"]
     return {"Authorization": f"Bearer {token}"}

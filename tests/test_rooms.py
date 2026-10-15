@@ -25,9 +25,9 @@ def test_rooms_crud_happy_path(client, admin_headers):
     assert deleted.status_code == 204
 
 
-def test_create_room_as_viewer_returns_403(client, viewer_headers):
+def test_create_room_as_client_returns_403(client, client_headers):
     r = client.post(
-        "/rooms", json={"name": "Sala X", "floor": 0}, headers=viewer_headers
+        "/rooms", json={"name": "Sala X", "floor": 0}, headers=client_headers
     )
     assert r.status_code == 403
 

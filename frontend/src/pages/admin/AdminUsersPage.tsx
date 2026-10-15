@@ -43,7 +43,8 @@ import { useToast } from "@/components/ui/toast";
 import { useCreateUser, useUpdateUser } from "@/hooks/mutations";
 import { useAuth } from "@/hooks/useAuth";
 import { useUsers } from "@/hooks/queries";
-import type { Role, User } from "@/lib/api/types";
+import { ROLES, type Role, type User } from "@/lib/api/types";
+import { ROLE_LABELS } from "@/lib/format";
 
 const PAGE_SIZE = 20;
 
@@ -60,24 +61,28 @@ const createSchema = z.object({
     .max(72, "Máximo 72 caracteres")
     .regex(/[A-Za-z]/, "Debe incluir al menos una letra")
     .regex(/\d/, "Debe incluir al menos un número"),
-  role: z.enum(["admin", "viewer"]),
+  role: z.enum(ROLES),
 });
 
 type CreateForm = z.infer<typeof createSchema>;
 
 const editSchema = z.object({
-  role: z.enum(["admin", "viewer"]),
+  role: z.enum(ROLES),
   is_active: z.boolean(),
 });
 
 type EditForm = z.infer<typeof editSchema>;
 
 function RoleBadge({ role }: { role: Role }) {
-  return role === "admin" ? (
-    <Badge variant="gold">Administrador</Badge>
-  ) : (
-    <Badge variant="neutral">Lector</Badge>
-  );
+  return <Badge variant={role === "admin" ? "gold" : "neutral"}>{ROLE_LABELS[role]}</Badge>;
+}
+
+function RoleSelectItems() {
+  return ROLES.map((role) => (
+    <SelectItem key={role} value={role}>
+      {ROLE_LABELS[role]}
+    </SelectItem>
+  ));
 }
 
 function CreateUserDialog({
@@ -98,11 +103,11 @@ function CreateUserDialog({
     formState: { errors },
   } = useForm<CreateForm>({
     resolver: zodResolver(createSchema),
-    defaultValues: { username: "", password: "", role: "viewer" },
+    defaultValues: { username: "", password: "", role: "client" },
   });
 
   useEffect(() => {
-    if (open) reset({ username: "", password: "", role: "viewer" });
+    if (open) reset({ username: "", password: "", role: "client" });
   }, [open, reset]);
 
   async function onSubmit(values: CreateForm) {
@@ -155,8 +160,7 @@ function CreateUserDialog({
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="viewer">Lector</SelectItem>
-                      <SelectItem value="admin">Administrador</SelectItem>
+                      <RoleSelectItems />
                     </SelectContent>
                   </Select>
                 )}
@@ -196,7 +200,7 @@ function EditUserDialog({
     formState: { errors },
   } = useForm<EditForm>({
     resolver: zodResolver(editSchema),
-    defaultValues: { role: "viewer", is_active: true },
+    defaultValues: { role: "client", is_active: true },
   });
 
   useEffect(() => {
@@ -237,8 +241,7 @@ function EditUserDialog({
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="viewer">Lector</SelectItem>
-                      <SelectItem value="admin">Administrador</SelectItem>
+                      <RoleSelectItems />
                     </SelectContent>
                   </Select>
                 )}

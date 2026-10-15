@@ -97,10 +97,10 @@ def test_revoke_session_by_id(client, admin_headers):
     )
 
 
-def test_cannot_revoke_another_users_session(client, admin_headers, viewer_headers):
-    login(client, "viewer", "ViewerPass123")
-    viewer_sessions = client.get("/auth/sessions", headers=viewer_headers).json()
-    victim_id = viewer_sessions[0]["id"]
+def test_cannot_revoke_another_users_session(client, admin_headers, client_headers):
+    login(client, "client", "ClientPass123")
+    client_sessions = client.get("/auth/sessions", headers=client_headers).json()
+    victim_id = client_sessions[0]["id"]
 
     r = client.delete(f"/auth/sessions/{victim_id}", headers=admin_headers)
     assert r.status_code == 404
@@ -158,16 +158,16 @@ def test_revoke_all_sessions_is_audited(client, admin_headers, db):
     assert rows[0].actor == "admin"
 
 
-def test_revoke_all_sessions_isolated_to_caller(client, admin_headers, viewer_headers):
-    viewer = login(client, "viewer", "ViewerPass123")
+def test_revoke_all_sessions_isolated_to_caller(client, admin_headers, client_headers):
+    client_user = login(client, "client", "ClientPass123")
     client.delete("/auth/sessions", headers=admin_headers)
-    # The viewer's sessions are untouched.
+    # The client's sessions are untouched.
     assert (
-        client.get("/auth/me", headers=viewer_headers).status_code == 200
+        client.get("/auth/me", headers=client_headers).status_code == 200
     )
     assert (
         client.post(
-            "/auth/refresh", cookies={"refresh_token": refresh_cookie(viewer)}
+            "/auth/refresh", cookies={"refresh_token": refresh_cookie(client_user)}
         ).status_code
         == 200
     )

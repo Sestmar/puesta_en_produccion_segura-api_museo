@@ -7,7 +7,7 @@ SPA construida con **React 19**, **Vite**, **TypeScript** y **Tailwind CSS v4**.
 - **Catálogo público**: listados paginados y páginas de detalle de obras, artistas y salas.
 - **Autenticación segura**: JWT con *access token* en memoria y *refresh token* en cookie `httpOnly` + `Secure` + `SameSite`. El frontend nunca toca el refresh token.
 - **Panel de administración**: gestión de obras, artistas, salas, usuarios y registro de auditoría con verificación de cadena de hashes.
-- **RBAC**: rol `admin` para escrituras; rol `viewer` para lecturas. El catálogo público no requiere login.
+- **RBAC**: roles `admin`, `manager` (gestor del catálogo) y `client`. El catálogo público no requiere login.
 - **Formularios robustos**: React Hook Form + Zod, con mensajes de error accesibles.
 - **Datos remotos**: TanStack Query para caché, invalidación y estados de carga/error.
 - **Imágenes locales**: las fotos de las obras se descargan a `public/works/` durante el seed/catalogado porque el CDN IIIF del Art Institute de Chicago bloquea el *hotlinking* desde orígenes ajenos a `artic.edu`.

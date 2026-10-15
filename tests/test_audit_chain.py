@@ -72,8 +72,8 @@ def test_verify_detects_out_of_band_tampering(db):
     assert result.valid is False
 
 
-def test_verify_endpoint_requires_admin(client, admin_headers, viewer_headers):
-    forbidden = client.get("/audit/verify", headers=viewer_headers)
+def test_verify_endpoint_requires_admin(client, admin_headers, client_headers):
+    forbidden = client.get("/audit/verify", headers=client_headers)
     assert forbidden.status_code == 403
 
     ok = client.get("/audit/verify", headers=admin_headers)

@@ -1,6 +1,8 @@
 /** Tipos que reflejan 1:1 los esquemas Pydantic del backend. */
 
-export type Role = "admin" | "viewer";
+export const ROLES = ["admin", "manager", "client"] as const;
+
+export type Role = (typeof ROLES)[number];
 
 export interface User {
   id: number;

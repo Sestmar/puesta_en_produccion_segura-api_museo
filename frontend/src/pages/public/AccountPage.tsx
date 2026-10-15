@@ -32,7 +32,7 @@ import { useToast } from "@/components/ui/toast";
 import { useAuth } from "@/hooks/useAuth";
 import { useChangePassword, useCloseAllSessions, useRevokeSession } from "@/hooks/mutations";
 import { useSessions } from "@/hooks/queries";
-import { formatDateTime } from "@/lib/format";
+import { formatDateTime, ROLE_LABELS } from "@/lib/format";
 
 const passwordSchema = z
   .object({
@@ -302,7 +302,7 @@ export function AccountPage() {
                     {user?.username ?? "—"}
                   </p>
                   <Badge variant={user?.role === "admin" ? "gold" : "neutral"}>
-                    {user?.role === "admin" ? "Administrador" : "Lector"}
+                    {user ? ROLE_LABELS[user.role] : "—"}
                   </Badge>
                 </div>
               </div>

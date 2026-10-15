@@ -7,7 +7,7 @@ from sqlalchemy.orm import Session
 
 from app.audit import AuditAction, record_event
 from app.database import get_db
-from app.deps import require_admin
+from app.deps import require_catalog_editor
 from app.models import Artwork, Room, User
 from app.schemas import PageResult, RoomCreate, RoomOut, RoomUpdate
 
@@ -47,7 +47,7 @@ def get_room(
 def create_room(
     payload: RoomCreate,
     db: Annotated[Session, Depends(get_db)],
-    current_user: Annotated[User, Depends(require_admin)],
+    current_user: Annotated[User, Depends(require_catalog_editor)],
     request: Request,
 ):
     room = Room(**payload.model_dump())
@@ -78,7 +78,7 @@ def update_room(
     room_id: int,
     payload: RoomUpdate,
     db: Annotated[Session, Depends(get_db)],
-    current_user: Annotated[User, Depends(require_admin)],
+    current_user: Annotated[User, Depends(require_catalog_editor)],
     request: Request,
 ):
     room = _get_or_404(room_id, db)
@@ -109,7 +109,7 @@ def update_room(
 def delete_room(
     room_id: int,
     db: Annotated[Session, Depends(get_db)],
-    current_user: Annotated[User, Depends(require_admin)],
+    current_user: Annotated[User, Depends(require_catalog_editor)],
     request: Request,
 ):
     room = _get_or_404(room_id, db)

@@ -6,7 +6,7 @@ from sqlalchemy.orm import Session
 
 from app.audit import AuditAction, record_event
 from app.database import get_db
-from app.deps import require_admin
+from app.deps import require_catalog_editor
 from app.models import Artist, Artwork, User
 from app.schemas import ArtistCreate, ArtistOut, ArtistUpdate, PageResult
 
@@ -50,7 +50,7 @@ def get_artist(
 def create_artist(
     payload: ArtistCreate,
     db: Annotated[Session, Depends(get_db)],
-    current_user: Annotated[User, Depends(require_admin)],
+    current_user: Annotated[User, Depends(require_catalog_editor)],
     request: Request,
 ):
     artist = Artist(**payload.model_dump())
@@ -74,7 +74,7 @@ def update_artist(
     artist_id: int,
     payload: ArtistUpdate,
     db: Annotated[Session, Depends(get_db)],
-    current_user: Annotated[User, Depends(require_admin)],
+    current_user: Annotated[User, Depends(require_catalog_editor)],
     request: Request,
 ):
     artist = _get_or_404(artist_id, db)
@@ -98,7 +98,7 @@ def update_artist(
 def delete_artist(
     artist_id: int,
     db: Annotated[Session, Depends(get_db)],
-    current_user: Annotated[User, Depends(require_admin)],
+    current_user: Annotated[User, Depends(require_catalog_editor)],
     request: Request,
 ):
     artist = _get_or_404(artist_id, db)

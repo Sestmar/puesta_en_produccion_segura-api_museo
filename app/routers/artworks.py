@@ -7,7 +7,7 @@ from sqlalchemy.orm import Session
 
 from app.audit import AuditAction, record_event
 from app.database import get_db
-from app.deps import require_admin
+from app.deps import require_catalog_editor
 from app.models import Artist, Artwork, Room, User
 from app.schemas import ArtworkCreate, ArtworkOut, ArtworkUpdate, PageResult
 
@@ -73,7 +73,7 @@ def get_artwork(
 def create_artwork(
     payload: ArtworkCreate,
     db: Annotated[Session, Depends(get_db)],
-    current_user: Annotated[User, Depends(require_admin)],
+    current_user: Annotated[User, Depends(require_catalog_editor)],
     request: Request,
 ):
     _validate_references(db, payload.artist_id, payload.room_id)
@@ -105,7 +105,7 @@ def update_artwork(
     artwork_id: int,
     payload: ArtworkUpdate,
     db: Annotated[Session, Depends(get_db)],
-    current_user: Annotated[User, Depends(require_admin)],
+    current_user: Annotated[User, Depends(require_catalog_editor)],
     request: Request,
 ):
     artwork = _get_or_404(artwork_id, db)
@@ -140,7 +140,7 @@ def update_artwork(
 def delete_artwork(
     artwork_id: int,
     db: Annotated[Session, Depends(get_db)],
-    current_user: Annotated[User, Depends(require_admin)],
+    current_user: Annotated[User, Depends(require_catalog_editor)],
     request: Request,
 ):
     artwork = _get_or_404(artwork_id, db)
