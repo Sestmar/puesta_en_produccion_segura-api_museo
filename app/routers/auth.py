@@ -3,7 +3,7 @@ from typing import Annotated
 
 from fastapi import APIRouter, Depends, HTTPException, Request, Response, status
 from fastapi.security import OAuth2PasswordRequestForm
-from sqlalchemy import select
+from sqlalchemy import func, select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
@@ -14,7 +14,14 @@ from app.database import get_db
 from app.deps import get_current_user, require_admin_or_bootstrap
 from app.models import AuthSession, Role, User
 from app.ratelimit import limiter
-from app.schemas import PasswordChange, SessionOut, TokenOut, UserCreate, UserOut
+from app.schemas import (
+    PasswordChange,
+    SessionOut,
+    SignupCreate,
+    TokenOut,
+    UserCreate,
+    UserOut,
+)
 from app.security import create_access_token, hash_password, verify_password
 from app.sessions import (
     _as_utc,
@@ -45,28 +52,8 @@ def register(
     auth_user: Annotated[User | None, Depends(require_admin_or_bootstrap)],
     request: Request,
 ):
-    existing = db.scalar(select(User).where(User.username == payload.username))
-    if existing is not None:
-        raise HTTPException(
-            status_code=status.HTTP_409_CONFLICT,
-            detail="Username is already taken",
-        )
     role = Role.ADMIN.value if auth_user is None else payload.role
-    user = User(
-        username=payload.username,
-        hashed_password=hash_password(payload.password),
-        role=role,
-    )
-    db.add(user)
-    try:
-        db.commit()
-    except IntegrityError:
-        db.rollback()
-        raise HTTPException(
-            status_code=status.HTTP_409_CONFLICT,
-            detail="Username is already taken",
-        ) from None
-    db.refresh(user)
+    user = _create_user(db, username=payload.username, password=payload.password, role=role)
     record_event(
         db,
         action=AuditAction.REGISTER,
@@ -75,6 +62,59 @@ def register(
         resource_id=user.id,
         request=request,
     )
+    return user
+
+
+@router.post(
+    "/signup",
+    status_code=status.HTTP_201_CREATED,
+    response_model=UserOut,
+)
+@limiter.limit(lambda: settings.signup_rate_limit)
+def signup(
+    payload: SignupCreate,
+    db: Annotated[Session, Depends(get_db)],
+    request: Request,
+):
+    """Public self-registration. Always creates a client account."""
+    # Signing up first would consume the empty-table bootstrap of the admin.
+    if (db.scalar(select(func.count()).select_from(User)) or 0) == 0:
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail="Registration is not available yet",
+        )
+    user = _create_user(
+        db,
+        username=payload.username,
+        password=payload.password,
+        role=Role.CLIENT.value,
+    )
+    record_event(
+        db,
+        action=AuditAction.SIGNUP,
+        actor=user.username,
+        resource_type="user",
+        resource_id=user.id,
+        request=request,
+    )
+    return user
+
+
+def _create_user(db: Session, *, username: str, password: str, role: str) -> User:
+    username_taken = HTTPException(
+        status_code=status.HTTP_409_CONFLICT,
+        detail="Username is already taken",
+    )
+    if db.scalar(select(User).where(User.username == username)) is not None:
+        raise username_taken
+    user = User(username=username, hashed_password=hash_password(password), role=role)
+    db.add(user)
+    try:
+        db.commit()
+    except IntegrityError:
+        db.rollback()
+        raise username_taken from None
+    db.refresh(user)
     return user
 
 

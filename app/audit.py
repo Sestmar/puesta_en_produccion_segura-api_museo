@@ -22,6 +22,7 @@ logger = logging.getLogger(__name__)
 
 class AuditAction:
     REGISTER = "auth.register"
+    SIGNUP = "auth.signup"
     LOGIN_SUCCESS = "auth.login.success"
     LOGIN_FAILED = "auth.login.failed"
     LOGIN_LOCKED = "auth.login.locked"

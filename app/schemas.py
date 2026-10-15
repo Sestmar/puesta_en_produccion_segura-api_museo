@@ -25,15 +25,24 @@ def _validate_password(value: str) -> str:
 RoleName = Literal["admin", "manager", "client"]
 
 
-class UserCreate(BaseModel):
+class _Credentials(BaseModel):
     username: str = Field(min_length=3, max_length=50, pattern=r"^[a-zA-Z0-9_.-]+$")
     password: str = Field(min_length=8, max_length=72)
-    role: RoleName = "client"
 
     @field_validator("password")
     @classmethod
     def password_complexity(cls, value: str) -> str:
         return _validate_password(value)
+
+
+class UserCreate(_Credentials):
+    role: RoleName = "client"
+
+
+class SignupCreate(_Credentials):
+    """Public self-registration: the role is never client-controlled."""
+
+    model_config = ConfigDict(extra="forbid")
 
 
 class UserOut(ORMModel):

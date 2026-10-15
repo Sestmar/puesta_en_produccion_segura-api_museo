@@ -38,6 +38,7 @@ class Settings(BaseSettings):
     ]
     login_rate_limit: str = "5 per minute"
     refresh_rate_limit: str = "20 per minute"
+    signup_rate_limit: str = "10 per hour"
     default_rate_limit: str = "100 per minute"
     max_failed_attempts: int = 5
     lockout_minutes: int = 15
