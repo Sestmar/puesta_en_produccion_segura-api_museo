@@ -2,11 +2,52 @@
 
 API REST para un catálogo de museo construida con FastAPI, diseñada siguiendo buenas prácticas de seguridad (autenticación JWT, control de acceso basado en roles, limitación de tasa y validación estricta de entradas).
 
+## Requisitos de la práctica
+
+Cómo cumple el proyecto cada requisito de la aplicación distribuida:
+
+**1. Backend en Python y frontend en React, separados.** El backend (`app/`) es una API FastAPI que solo habla JSON; el frontend (`frontend/`) es una SPA React independiente que consume esa API por HTTP. Cada uno tiene su propio `Dockerfile`, sus dependencias y su servicio en `docker-compose.yml` (`api` en el puerto 8001, `frontend` en el 5173). La comunicación entre orígenes se controla con CORS (`CORS_ORIGINS`, `allow_credentials`).
+
+**2. Registro de usuarios y almacenamiento seguro de las claves.** Cualquiera puede crear una cuenta en `/registro` (`POST /auth/signup`). Las contraseñas:
+
+- nunca se guardan en claro: se almacena solo su hash **bcrypt** con sal aleatoria por contraseña y coste configurable (`BCRYPT_ROUNDS`, por defecto 12, es decir 2¹² iteraciones), lo que hace muy caro un ataque de diccionario aunque se filtre la base de datos;
+- deben cumplir una política mínima (8–72 caracteres, al menos una letra y un dígito; 72 es el límite de bcrypt);
+- no aparecen en logs, respuestas ni registro de auditoría;
+- se comparan con `bcrypt.checkpw`, y un login fallido devuelve el mismo error tanto si el usuario existe como si no (sin enumeración de usuarios).
+
+Además, el registro está limitado por IP (`SIGNUP_RATE_LIMIT`), el cliente no puede elegir su rol (enviar `role` devuelve 422) y no está disponible hasta que existe el primer admin, para que nadie pueda adelantarse en una instalación nueva. Los refresh tokens tampoco se guardan en claro: solo su hash SHA-256.
+
+**3. Al menos tres roles.** `admin`, `manager` y `client`, aplicados en el backend en cada endpoint (ver [Roles y permisos](#roles-y-permisos)). El frontend oculta lo que un rol no puede usar, pero eso es solo comodidad: la autorización real la decide siempre la API, que responde `403` si el rol no basta.
+
+**4. API REST con JWT y refresco de tokens.** Ver [Flujo de autenticación](#flujo-de-autenticación):
+
+- **Access token JWT** firmado con HS256 (`SECRET_KEY`), con los claims `sub` (usuario), `role`, `sid` (id de sesión), `iat` y `exp`, y una vida corta de 30 min (`ACCESS_TOKEN_EXPIRE_MINUTES`). Se envía en `Authorization: Bearer` y el frontend lo guarda solo en memoria (nunca en `localStorage`), por lo que un XSS no puede robarlo de forma persistente.
+- **Refresh token** opaco y aleatorio (`secrets.token_urlsafe(48)`) con vida de 14 días (`REFRESH_TOKEN_EXPIRE_DAYS`), entregado en una cookie `httpOnly` + `Secure` + `SameSite=Lax` restringida a `Path=/auth`: JavaScript no puede leerlo y el navegador solo lo manda a los endpoints de autenticación.
+- **Rotación**: cada `POST /auth/refresh` invalida el refresh token usado y emite uno nuevo junto con un nuevo access token.
+- **Detección de reuso**: si alguien presenta un refresh token ya rotado (señal de robo), se revocan todas las sesiones del usuario.
+- **Sin estado en HTTP**: la API no usa sesiones de servidor ni cookies para autorizar; cada petición se autentica solo con el JWT. El claim `sid` se contrasta con la tabla `auth_sessions`, de modo que logout, cambio de contraseña, desactivar la cuenta o "cerrar todas las sesiones" invalidan el access token al instante, sin esperar a que caduque.
+- El frontend renueva el access token de forma transparente al recibir un `401` (una única petición de refresh aunque fallen varias a la vez) y, al recargar la página, recupera la sesión con la cookie.
+
+## Roles y permisos
+
+| Acción | Anónimo | `client` | `manager` | `admin` |
+|---|:---:|:---:|:---:|:---:|
+| Explorar el catálogo (obras, artistas, salas) | ✅ | ✅ | ✅ | ✅ |
+| Crear su propia cuenta (`/auth/signup`, siempre como `client`) | ✅ | — | — | — |
+| Ver y gestionar su cuenta, contraseña y sesiones | — | ✅ | ✅ | ✅ |
+| Guardar obras en favoritos ("Mi colección") | — | ✅ | ✅ | ✅ |
+| Crear, editar y borrar obras, artistas y salas | — | — | ✅ | ✅ |
+| Crear usuarios con cualquier rol, cambiar roles y desactivar cuentas | — | — | — | ✅ |
+| Consultar y verificar el registro de auditoría | — | — | — | ✅ |
+
+El primer usuario del sistema se crea con `POST /auth/register` y es siempre `admin`. El repositorio no incluye usuarios ni contraseñas predefinidos: el seed (`python -m app.seed`) solo carga el catálogo.
+
 ## Características
 
 - **Entidades**: artistas, salas y obras (con relaciones e integridad referencial)
 - **Autenticación**: flujo de contraseña OAuth2 con *access token* JWT de corta durada (30 min) y *refresh token* opaco entregado en una cookie `httpOnly` + `Secure` + `SameSite`. Revocar la sesión (logout, cambio de contraseña, detección de reuso o cierre de todas las sesiones) invalida el acceso al instante
-- **Autorización**: tres roles — `admin` (todo, incluidos usuarios y auditoría), `manager` (gestiona el catálogo: obras, artistas y salas) y `client` (usuario final, solo lectura); los usuarios no autenticados pueden explorar el catálogo
+- **Registro público**: `POST /auth/signup` permite a cualquiera crear su propia cuenta, siempre con el rol `client` (ver [Roles y permisos](#roles-y-permisos))
+- **Autorización**: tres roles — `admin` (todo, incluidos usuarios y auditoría), `manager` (gestiona el catálogo: obras, artistas y salas) y `client` (usuario final: explora el catálogo y gestiona sus favoritos); los usuarios no autenticados pueden explorar el catálogo
 - **Favoritos por usuario**: cualquier usuario autenticado guarda obras en `/me/favorites`; el propietario se toma siempre del access token y nunca de la URL o del cuerpo, por lo que no es posible leer ni modificar los favoritos de otra persona (sin superficie IDOR)
 - **Gestión de usuarios** (solo admin): `GET /users` para listar, y `PATCH /users/{id}` para cambiar el rol o activar/desactivar una cuenta. Desactivar una cuenta revoca sus sesiones en el acto y bloquea el login (con el mismo error genérico, sin revelar el motivo); un admin no puede modificarse a sí mismo, lo que evita el auto-bloqueo
 - **Cambio de contraseña**: `PUT /auth/password` exige la contraseña actual, aplica la misma política de complejidad y revoca todas las sesiones del usuario para forzar el re-login en todos sus dispositivos
@@ -47,7 +88,7 @@ docker compose up --build
 Esto inicia PostgreSQL, Redis, la API y el frontend, aplica las migraciones de Alembic automáticamente y expone:
 
 - Frontend: `http://localhost:5173`
-- API: `http://127.0.0.1:8000`
+- API: `http://127.0.0.1:8001` (docs en `http://127.0.0.1:8001/docs`)
 
 Los datos de Postgres persisten en el volumen `pgdata`.
 
@@ -100,7 +141,7 @@ pip install -r requirements-dev.txt
 pytest
 ```
 
-Las pruebas corren contra SQLite y dejan la suite completa en verde (186 tests). `pytest` aplica además el umbral de cobertura de ramas (mínimo 90 %).
+Las pruebas corren contra SQLite y dejan la suite completa en verde (229 tests). `pytest` aplica además el umbral de cobertura de ramas (mínimo 90 %).
 
 ## Calidad del código
 
@@ -131,26 +172,41 @@ La suite cubre autenticación, RBAC, validación, limitación de tasa, integrida
 
 ## Flujo de autenticación
 
-El **primer** usuario registrado se convierte automáticamente en `admin` (inicialización). A partir de ahí, el registro requiere un token de admin.
+El **primer** usuario registrado se convierte automáticamente en `admin` (inicialización). A partir de ahí hay dos formas de crear cuentas:
+
+- **Registro público** (`POST /auth/signup`, página `/registro` del frontend): cualquiera crea su cuenta, siempre como `client`.
+- **Alta por un admin** (`POST /auth/register` con token de admin, o el panel de usuarios): permite elegir el rol, por ejemplo para crear un `manager`.
+
+Los ejemplos usan la API local en el puerto 8000; con Docker, usa el 8001. Sustituye `<CONTRASEÑA>` por una propia.
 
 ```bash
 # 1. Crear el admin inicial (solo funciona mientras la base de datos no tenga usuarios)
 curl -X POST http://127.0.0.1:8000/auth/register ^
   -H "Content-Type: application/json" ^
-  -d "{\"username\":\"admin\",\"password\":\"AdminPass123\"}"
+  -d "{\"username\":\"admin\",\"password\":\"<CONTRASEÑA>\"}"
 
-# 2. Iniciar sesión: access token en el body, refresh token en cookie httpOnly
+# 2. Registro público de un cliente
+curl -X POST http://127.0.0.1:8000/auth/signup ^
+  -H "Content-Type: application/json" ^
+  -d "{\"username\":\"ana\",\"password\":\"<CONTRASEÑA>\"}"
+
+# 3. Iniciar sesión: access token en el body, refresh token en cookie httpOnly
 curl -X POST http://127.0.0.1:8000/auth/login ^
   -H "Content-Type: application/x-www-form-urlencoded" ^
-  -d "username=admin&password=AdminPass123" ^
+  -d "username=admin&password=<CONTRASEÑA>" ^
   -c cookies.txt
 
-# 3. Crear un recurso (solo admin)
+# 4. Crear un recurso del catálogo (admin o manager)
 curl -X POST http://127.0.0.1:8000/artists ^
   -H "Authorization: Bearer <ACCESS_TOKEN>" ^
   -H "Content-Type: application/json" ^
   -d "{\"name\":\"Frida Kahlo\",\"nationality\":\"Mexican\",\"birth_year\":1907}"
+
+# 5. Renovar el access token con la cookie (rota también el refresh token)
+curl -X POST http://127.0.0.1:8000/auth/refresh -b cookies.txt -c cookies.txt
 ```
+
+Con `REFRESH_COOKIE_SECURE=true` (el valor por defecto) la cookie solo viaja por HTTPS, así que el paso 5 no funciona contra `http://`. Para probar en local sin HTTPS define `REFRESH_COOKIE_SECURE=false`, como ya hace `docker-compose.yml`.
 
 `/auth/login` devuelve el `access_token` en el body y setea el `refresh_token` en una cookie `httpOnly`, `Secure`, `SameSite=Lax` (path `/auth`). El frontend no puede leer el refresh token; el navegador lo envía automáticamente en `/auth/refresh`. Los refresh tokens son sesiones revocables del lado del servidor:
 `POST /auth/refresh` rota la sesión y la cookie (reutilizar un token ya rotado revoca todas las sesiones del usuario),
@@ -204,10 +260,10 @@ app/
   main.py         Aplicación FastAPI, middleware, CORS y manejador de límite de tasa
   config.py       Configuración desde variables de entorno (.env)
   database.py     Engine, sesión y pragma de FK para SQLite
-  models.py       Modelos SQLAlchemy (users, auth_sessions, audit_logs, artists, rooms, artworks)
+  models.py       Modelos SQLAlchemy (users, auth_sessions, audit_logs, artists, rooms, artworks, favorites)
   schemas.py      Esquemas de validación Pydantic
   security.py     Hash bcrypt + creación/verificación de JWT
-  deps.py         Dependencias de autenticación (get_current_user, require_admin)
+  deps.py         Dependencias de autenticación (get_current_user, require_role, require_admin, require_catalog_editor)
   audit.py        Helper de AuditLog (acción, actor, recurso, request id) + cadena de hash tamper-evident
   anchor.py       Anclaje externo de la cabecera de la cadena (archivo firmado) para detectar truncado
   checkpoint.py   Checkpoint firmado del último registro podado (mantiene verificable la cadena tras retención)
@@ -215,15 +271,15 @@ app/
   ratelimit.py    Instancia del limitador de slowapi
   logging_config.py  Formateador JSON + contexto de request-id + configuración de logging
   middleware.py   Cabeceras de seguridad + contexto de solicitud (request id, log de acceso)
-  routers/        health, auth, users, audit, artists, rooms, artworks
+  routers/        health, metrics, auth, users, audit, artists, rooms, artworks, favorites
 alembic/          Entorno de migraciones + scripts versionados (env.py, versions/)
 alembic.ini       Configuración de Alembic (la URL se sobrescribe desde la configuración de la app)
 Dockerfile        Imagen multietapa (builder + runtime slim, usuario no root)
 docker-compose.yml  API + PostgreSQL con healthchecks
 requirements.txt      Dependencias de runtime
 requirements-dev.txt  Dependencias de runtime + pruebas
-tests/            178 pruebas (auth, RBAC, sesiones, tope de sesiones, revocación de token, bloqueo, cambio de contraseña, gestión de usuarios, auditoría, consulta de auditoría, cadena de hash, ancla externa, retención, cabeceras y CSP, redirección HTTPS, límite de tasa global, proxy-aware, CRUD, límites)
-.github/workflows/ci.yml  CI: pruebas, pip-audit y gitleaks
+tests/            229 pruebas (auth, registro público, roles y migración de roles, favoritos, RBAC, sesiones, tope de sesiones, revocación de token, bloqueo, cambio de contraseña, gestión de usuarios, auditoría, consulta de auditoría, cadena de hash, ancla externa, retención, cabeceras y CSP, redirección HTTPS, límite de tasa global, proxy-aware, CRUD, límites)
+.github/workflows/ci.yml  CI: pruebas, ruff + mypy, migraciones en PostgreSQL, pip-audit y gitleaks
 ```
 
 ## Notas de producción

@@ -6,7 +6,9 @@ SPA construida con **React 19**, **Vite**, **TypeScript** y **Tailwind CSS v4**.
 
 - **Catálogo público**: listados paginados y páginas de detalle de obras, artistas y salas.
 - **Autenticación segura**: JWT con *access token* en memoria y *refresh token* en cookie `httpOnly` + `Secure` + `SameSite`. El frontend nunca toca el refresh token.
-- **Panel de administración**: gestión de obras, artistas, salas, usuarios y registro de auditoría con verificación de cadena de hashes.
+- **Registro de cuenta**: `/registro` crea una cuenta de cliente, valida con las mismas reglas que el backend e inicia sesión automáticamente.
+- **Mi colección**: los usuarios autenticados marcan obras con un corazón (en las tarjetas y en el detalle) y las consultan en `/mi-coleccion`. El cambio se ve al instante y se deshace si la API falla.
+- **Panel de gestión**: el admin gestiona obras, artistas, salas, usuarios y el registro de auditoría con verificación de cadena de hashes; el gestor solo ve y gestiona el catálogo.
 - **RBAC**: roles `admin`, `manager` (gestor del catálogo) y `client`. El catálogo público no requiere login.
 - **Formularios robustos**: React Hook Form + Zod, con mensajes de error accesibles.
 - **Datos remotos**: TanStack Query para caché, invalidación y estados de carga/error.
@@ -44,10 +46,11 @@ frontend/
 │   │   ├── env.ts          # Variables de entorno tipadas
 │   │   ├── format.ts       # Formateo de fechas, números, acciones de auditoría
 │   │   ├── forms.ts        # Conversión de tipos para formularios
+│   │   ├── validation.ts   # Reglas de usuario y contraseña (iguales a las del backend)
 │   │   ├── images.ts       # URLs locales de imágenes del catálogo
 │   │   └── utils.ts        # cn() y helpers
 │   ├── pages/
-│   │   ├── public/         # Home, Artworks, Artists, Rooms, Login, Account, 404...
+│   │   ├── public/         # Home, Artworks, Artists, Rooms, Login, Register, MyCollection, Account, 404...
 │   │   └── admin/          # Dashboard, AdminArtworks, AdminArtists, AdminRooms, AdminUsers, AdminAudit
 │   ├── App.tsx             # Router principal
 │   ├── index.css           # Theme tokens + Tailwind
@@ -108,8 +111,8 @@ docker compose up --build
 ```
 
 - Frontend: `http://localhost:5173`
-- API: `http://127.0.0.1:8000`
-- Documentación interactiva: `http://127.0.0.1:8000/docs`
+- API: `http://127.0.0.1:8001`
+- Documentación interactiva: `http://127.0.0.1:8001/docs`
 
 El servicio `frontend` usa el target `dev` del Dockerfile, con hot reload y volumen montado para que los cambios locales se reflejen inmediatamente.
 
@@ -148,12 +151,24 @@ La imagen de producción:
 
 ## Flujo de autenticación
 
-1. El usuario inicia sesión en `/login`.
+1. El usuario inicia sesión en `/login` (o crea su cuenta en `/registro`, que inicia sesión al terminar).
 2. El backend responde con el `access_token` en el body **y** setea el `refresh_token` en una cookie `httpOnly`, `Secure`, `SameSite=Lax`, path `/auth`.
 3. El frontend guarda el `access_token` en memoria y lo adjunta como `Authorization: Bearer <token>`.
-4. Si el access token expira, el cliente HTTP intenta `POST /auth/refresh`. El navegador envía la cookie automáticamente; el backend rota la sesión y devuelve un nuevo access token.
-5. Al recargar la página, `AuthProvider` intenta `/auth/me`; si falla, intenta `/auth/refresh` con la cookie. Si ambos fallan, el usuario debe volver a loguearse.
-6. Logout, cambio de contraseña y "cerrar todas las sesiones" revocan las sesiones del backend y borran la cookie.
+4. Si una petición recibe `401` porque el access token expiró, el cliente HTTP llama a `POST /auth/refresh` y reintenta la petición. El navegador envía la cookie automáticamente; el backend rota la sesión y devuelve un nuevo access token. Si varias peticiones fallan a la vez, comparten un único refresh.
+5. Al recargar la página, el access token en memoria se pierde. Si hay una sesión iniciada, `AuthProvider` la recupera con `POST /auth/refresh` y después `/auth/me`. Para saber si merece la pena intentarlo, guarda en `localStorage` un indicador `museo:has-session` que solo dice "hay sesión", sin ningún token. Así, un visitante anónimo no lanza peticiones que acabarían en `401`.
+6. Logout, cambio de contraseña y "cerrar todas las sesiones" revocan las sesiones del backend, borran la cookie y el indicador.
+
+## Rutas y permisos
+
+| Ruta | Acceso |
+|---|---|
+| `/`, `/obras`, `/artistas`, `/salas` y sus detalles | Público |
+| `/login`, `/registro` | Público |
+| `/cuenta`, `/mi-coleccion` | Cualquier usuario autenticado |
+| `/admin` (resumen), `/admin/obras`, `/admin/artistas`, `/admin/salas` | `admin` y `manager` |
+| `/admin/usuarios`, `/admin/auditoria` | Solo `admin` |
+
+Los guards de `components/common/guards.tsx` (`RequireAuth`, `RequireStaff`, `RequireAdmin`) y el menú filtrado por rol son solo experiencia de usuario: evitan mostrar pantallas que darían error. La autorización real la aplica el backend en cada petición.
 
 ## Conexión con el backend
 
@@ -191,6 +206,7 @@ Si querés usar fotos propias, colocalas en `public/works/{imageId}.jpg` y actua
 
 ## Notas de seguridad
 
-- Nunca almacenamos tokens en `localStorage` ni `sessionStorage`.
+- Nunca almacenamos tokens en `localStorage` ni `sessionStorage`. Lo único que va a `localStorage` es el indicador booleano `museo:has-session`, que no sirve como credencial.
+- Las contraseñas solo se envían al backend por el formulario; el frontend no las guarda en ningún sitio.
 - La cookie de refresh no es accesible mediante JavaScript (`httpOnly`), solo se envía por HTTPS en producción (`Secure`) y restringida a solicitudes del mismo sitio (`SameSite`).
 - El CSP del backend es restrictivo; en producción la SPA se sirve como estáticos y no requiere loosening del CSP.
