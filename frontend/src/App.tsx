@@ -12,6 +12,7 @@ import { ArtistDetailPage } from "./pages/public/ArtistDetailPage";
 import { RoomsPage } from "./pages/public/RoomsPage";
 import { RoomDetailPage } from "./pages/public/RoomDetailPage";
 import { LoginPage } from "./pages/public/LoginPage";
+import { RegisterPage } from "./pages/public/RegisterPage";
 import { AccountPage } from "./pages/public/AccountPage";
 import { NotFoundPage } from "./pages/public/NotFoundPage";
 
@@ -34,6 +35,7 @@ export default function App() {
         <Route path="salas" element={<RoomsPage />} />
         <Route path="salas/:id" element={<RoomDetailPage />} />
         <Route path="login" element={<LoginPage />} />
+        <Route path="registro" element={<RegisterPage />} />
         <Route
           path="cuenta"
           element={

@@ -45,22 +45,13 @@ import { useAuth } from "@/hooks/useAuth";
 import { useUsers } from "@/hooks/queries";
 import { ROLES, type Role, type User } from "@/lib/api/types";
 import { ROLE_LABELS } from "@/lib/format";
+import { PASSWORD_HINT, passwordSchema, usernameSchema } from "@/lib/validation";
 
 const PAGE_SIZE = 20;
 
 const createSchema = z.object({
-  username: z
-    .string()
-    .trim()
-    .min(3, "Mínimo 3 caracteres")
-    .max(50, "Máximo 50 caracteres")
-    .regex(/^[a-zA-Z0-9_.-]+$/, "Solo letras, números, punto, guion y guion bajo"),
-  password: z
-    .string()
-    .min(8, "Mínimo 8 caracteres")
-    .max(72, "Máximo 72 caracteres")
-    .regex(/[A-Za-z]/, "Debe incluir al menos una letra")
-    .regex(/\d/, "Debe incluir al menos un número"),
+  username: usernameSchema,
+  password: passwordSchema,
   role: z.enum(ROLES),
 });
 
@@ -141,7 +132,7 @@ function CreateUserDialog({
               htmlFor="user-password"
               required
               error={errors.password?.message}
-              hint="Mínimo 8 caracteres, con al menos una letra y un número."
+              hint={PASSWORD_HINT}
             >
               <Input
                 id="user-password"

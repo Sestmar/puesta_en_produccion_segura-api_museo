@@ -1,4 +1,4 @@
-import { apiRequest } from "./client";
+import { apiRequest, type QueryValue } from "./client";
 import type {
   Artist,
   ArtistCreate,
@@ -17,17 +17,31 @@ import type {
   RoomCreate,
   RoomUpdate,
   Session,
+  SignupPayload,
   TokenOut,
   User,
   UserCreate,
   UserUpdate,
 } from "./types";
 
+/** Los params de listado son objetos planos con valores escalares. */
+function toQuery(params: object): Record<string, QueryValue> {
+  return params as Record<string, QueryValue>;
+}
+
 export const authApi = {
   login: (username: string, password: string) =>
     apiRequest<TokenOut>("/auth/login", {
       method: "POST",
       form: { username, password },
+      auth: false,
+      allowRefresh: false,
+    }),
+
+  signup: (payload: SignupPayload) =>
+    apiRequest<User>("/auth/signup", {
+      method: "POST",
+      body: payload,
       auth: false,
       allowRefresh: false,
     }),
@@ -62,7 +76,7 @@ export const authApi = {
 
 export const usersApi = {
   list: (params: ListParams = {}) =>
-    apiRequest<Page<User>>("/users", { query: params as Record<string, any> }),
+    apiRequest<Page<User>>("/users", { query: toQuery(params) }),
 
   create: (payload: UserCreate) =>
     apiRequest<User>("/auth/register", { method: "POST", body: payload }),
@@ -73,7 +87,7 @@ export const usersApi = {
 
 export const artistsApi = {
   list: (params: ListParams = {}) =>
-    apiRequest<Page<Artist>>("/artists", { query: params as Record<string, any> }),
+    apiRequest<Page<Artist>>("/artists", { query: toQuery(params) }),
 
   get: (id: number) => apiRequest<Artist>(`/artists/${id}`),
 
@@ -89,7 +103,7 @@ export const artistsApi = {
 
 export const roomsApi = {
   list: (params: ListParams = {}) =>
-    apiRequest<Page<Room>>("/rooms", { query: params as Record<string, any> }),
+    apiRequest<Page<Room>>("/rooms", { query: toQuery(params) }),
 
   get: (id: number) => apiRequest<Room>(`/rooms/${id}`),
 
@@ -105,7 +119,7 @@ export const roomsApi = {
 
 export const artworksApi = {
   list: (params: ArtworkListParams = {}) =>
-    apiRequest<Page<Artwork>>("/artworks", { query: params as Record<string, any> }),
+    apiRequest<Page<Artwork>>("/artworks", { query: toQuery(params) }),
 
   get: (id: number) => apiRequest<Artwork>(`/artworks/${id}`),
 
@@ -121,7 +135,7 @@ export const artworksApi = {
 
 export const auditApi = {
   list: (params: AuditListParams = {}) =>
-    apiRequest<Page<AuditLog>>("/audit", { query: params as Record<string, any> }),
+    apiRequest<Page<AuditLog>>("/audit", { query: toQuery(params) }),
 
   verify: () => apiRequest<AuditVerification>("/audit/verify"),
 };

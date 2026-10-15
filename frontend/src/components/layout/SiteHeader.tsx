@@ -4,6 +4,7 @@ import {
   SignIn,
   SignOut,
   User as UserIcon,
+  UserPlus,
 } from "@phosphor-icons/react";
 import { useState } from "react";
 import { Link, NavLink, useNavigate } from "react-router-dom";
@@ -56,11 +57,18 @@ function AccountMenu() {
 
   if (!user) {
     return (
-      <Button asChild variant="ghost" size="sm" className="text-bone-50 hover:bg-white/10 hover:text-gold-400">
-        <Link to="/login">
-          <SignIn size={16} weight="bold" /> Ingresar
-        </Link>
-      </Button>
+      <div className="flex items-center gap-2">
+        <Button asChild variant="ghost" size="sm" className="text-bone-50 hover:bg-white/10 hover:text-gold-400">
+          <Link to="/login">
+            <SignIn size={16} weight="bold" /> Ingresar
+          </Link>
+        </Button>
+        <Button asChild size="sm" className="hidden sm:inline-flex">
+          <Link to="/registro">
+            <UserPlus size={16} weight="bold" /> Registrarse
+          </Link>
+        </Button>
+      </div>
     );
   }
 
@@ -166,13 +174,22 @@ function MobileMenu() {
               ) : null}
             </>
           ) : (
-            <NavLink
-              to="/login"
-              onClick={() => setOpen(false)}
-              className="rounded-control px-3 py-3 font-display text-sm font-bold uppercase tracking-[0.14em] text-gold-400 transition-colors hover:bg-ink-800"
-            >
-              Ingresar
-            </NavLink>
+            <>
+              <NavLink
+                to="/login"
+                onClick={() => setOpen(false)}
+                className="rounded-control px-3 py-3 font-display text-sm font-bold uppercase tracking-[0.14em] text-gold-400 transition-colors hover:bg-ink-800"
+              >
+                Ingresar
+              </NavLink>
+              <NavLink
+                to="/registro"
+                onClick={() => setOpen(false)}
+                className="rounded-control px-3 py-3 font-display text-sm font-bold uppercase tracking-[0.14em] text-bone-100 transition-colors hover:bg-ink-800"
+              >
+                Registrarse
+              </NavLink>
+            </>
           )}
         </nav>
       </DialogContent>

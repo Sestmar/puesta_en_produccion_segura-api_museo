@@ -22,6 +22,8 @@ type FormValues = z.infer<typeof schema>;
 
 interface LocationState {
   from?: string;
+  /** Usuario recién registrado cuyo login automático no se pudo completar. */
+  registered?: string;
 }
 
 export function LoginPage() {
@@ -30,7 +32,9 @@ export function LoginPage() {
   const location = useLocation();
   const [serverError, setServerError] = useState<string | null>(null);
 
-  const from = (location.state as LocationState | null)?.from ?? "/";
+  const state = location.state as LocationState | null;
+  const from = state?.from ?? "/";
+  const registered = state?.registered;
 
   const {
     register,
@@ -38,7 +42,7 @@ export function LoginPage() {
     formState: { errors, isSubmitting },
   } = useForm<FormValues>({
     resolver: zodResolver(schema),
-    defaultValues: { username: "", password: "" },
+    defaultValues: { username: registered ?? "", password: "" },
   });
 
   if (status === "authenticated") {
@@ -79,8 +83,8 @@ export function LoginPage() {
             El acervo, bajo control.
           </blockquote>
           <p className="max-w-md text-sm text-bone-300">
-            Inicia sesión para administrar obras, artistas y salas, y para consultar el
-            registro de auditoría del sistema.
+            Inicia sesión para guardar tus obras favoritas o, si formas parte del
+            equipo del museo, para gestionar el catálogo.
           </p>
         </div>
       </div>
@@ -99,8 +103,17 @@ export function LoginPage() {
             Iniciar sesión
           </h1>
           <p className="mt-2 text-sm text-mute-400">
-            Usa tus credenciales del museo para acceder al panel.
+            Accede con tu usuario y contraseña.
           </p>
+
+          {registered ? (
+            <p
+              role="status"
+              className="mt-6 rounded-control border border-gold-500/30 bg-gold-500/10 px-4 py-3 text-sm text-gold-300"
+            >
+              Cuenta creada. Inicia sesión para continuar.
+            </p>
+          ) : null}
 
           <form onSubmit={handleSubmit(onSubmit)} className="mt-8 flex flex-col gap-5" noValidate>
             <Field
@@ -164,6 +177,17 @@ export function LoginPage() {
               <SignIn size={16} weight="bold" /> Entrar
             </Button>
           </form>
+
+          <p className="mt-6 text-center text-sm text-mute-400">
+            ¿No tienes cuenta?{" "}
+            <Link
+              to="/registro"
+              state={{ from }}
+              className="font-bold text-gold-400 transition-colors hover:text-gold-300"
+            >
+              Regístrate
+            </Link>
+          </p>
         </div>
       </div>
     </div>

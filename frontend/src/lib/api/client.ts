@@ -105,7 +105,7 @@ export async function refreshAccessToken(): Promise<string | null> {
 /* Petición base                                                       */
 /* ------------------------------------------------------------------ */
 
-type QueryValue = string | number | boolean | undefined | null;
+export type QueryValue = string | number | boolean | undefined | null;
 
 export interface RequestOptions {
   method?: "GET" | "POST" | "PUT" | "PATCH" | "DELETE";

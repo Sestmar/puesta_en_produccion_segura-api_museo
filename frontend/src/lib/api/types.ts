@@ -86,6 +86,12 @@ export interface UserCreate {
   role: Role;
 }
 
+/** Registro público: el backend rechaza cualquier campo extra, incluido `role`. */
+export interface SignupPayload {
+  username: string;
+  password: string;
+}
+
 export interface UserUpdate {
   role?: Role;
   is_active?: boolean;
