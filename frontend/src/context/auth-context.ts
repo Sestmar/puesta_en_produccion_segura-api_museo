@@ -13,6 +13,8 @@ export interface AuthContextValue {
   login: (username: string, password: string) => Promise<void>;
   logout: () => Promise<void>;
   refreshUser: () => Promise<void>;
+  /** Cierra el flujo OAuth: canjea la cookie httpOnly por un access token. */
+  completeOAuth: () => Promise<void>;
 }
 
 export const AuthContext = createContext<AuthContextValue | null>(null);

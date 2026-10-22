@@ -29,7 +29,9 @@ COPY alembic.ini .
 COPY alembic ./alembic
 COPY app ./app
 
-RUN useradd --create-home --uid 1000 appuser
+RUN useradd --create-home --uid 1000 appuser \
+    && mkdir -p /app/audit_anchor \
+    && chown appuser:appuser /app/audit_anchor
 USER appuser
 
 EXPOSE 8000

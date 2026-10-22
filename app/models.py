@@ -20,7 +20,11 @@ class User(Base):
     username: Mapped[str] = mapped_column(
         String(50), unique=True, index=True, nullable=False
     )
-    hashed_password: Mapped[str] = mapped_column(String(128), nullable=False)
+    # NULL for accounts created through an external identity provider (OAuth).
+    hashed_password: Mapped[str | None] = mapped_column(String(128))
+    email: Mapped[str | None] = mapped_column(String(255))
+    oauth_provider: Mapped[str | None] = mapped_column(String(20))
+    oauth_subject: Mapped[str | None] = mapped_column(String(255))
     role: Mapped[str] = mapped_column(
         String(20), nullable=False, default=Role.CLIENT.value
     )

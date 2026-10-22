@@ -22,6 +22,7 @@ from app.routers import (
     favorites,
     health,
     metrics,
+    oauth,
     rooms,
     users,
 )
@@ -65,6 +66,7 @@ app.add_middleware(ProductionDocsMiddleware)
 app.include_router(health.router)
 app.include_router(metrics.router)
 app.include_router(auth.router)
+app.include_router(oauth.router)
 app.include_router(audit.router)
 app.include_router(users.router)
 app.include_router(artists.router)

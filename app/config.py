@@ -62,5 +62,11 @@ class Settings(BaseSettings):
     db_pool_recycle_seconds: int = 1800
     db_pool_pre_ping: bool = True
 
+    frontend_url: str = "http://localhost:5173"
+    oauth_rate_limit: str = "20 per minute"
+    google_client_id: str | None = None
+    google_client_secret: str | None = None
+    google_redirect_uri: str = "http://localhost:8000/auth/google/callback"
+
 
 settings = Settings()

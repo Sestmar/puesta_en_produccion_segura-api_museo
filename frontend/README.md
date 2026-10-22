@@ -69,14 +69,20 @@ frontend/
 Copiá `frontend/.env.example` a `frontend/.env` y ajustá:
 
 ```bash
-VITE_API_URL=http://127.0.0.1:8000
+VITE_API_URL=http://localhost:8000
 ```
 
 | Variable | Descripción | Por defecto |
 |---|---|---|
-| `VITE_API_URL` | URL base de la API FastAPI | `http://127.0.0.1:8000` |
+| `VITE_API_URL` | URL base de la API FastAPI | `http://localhost:8000` |
 
 Las variables de Vite deben comenzar con `VITE_` para ser expuestas al cliente.
+
+> **OAuth con Google:** usa siempre el mismo host que `GOOGLE_REDIRECT_URI` y
+> `FRONTEND_URL` del backend (`localhost`). La cookie httpOnly del refresh token
+> está ligada al host y no se comparte entre `localhost` y `127.0.0.1`; si los
+> mezclas, Google termina el login pero el siguiente `/auth/refresh` devuelve
+> `401` y la SPA muestra un error.
 
 ## Puesta en marcha
 
@@ -111,8 +117,8 @@ docker compose up --build
 ```
 
 - Frontend: `http://localhost:5173`
-- API: `http://127.0.0.1:8001`
-- Documentación interactiva: `http://127.0.0.1:8001/docs`
+- API: `http://localhost:8001`
+- Documentación interactiva: `http://localhost:8001/docs`
 
 El servicio `frontend` usa el target `dev` del Dockerfile, con hot reload y volumen montado para que los cambios locales se reflejen inmediatamente.
 

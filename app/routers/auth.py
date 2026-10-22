@@ -144,7 +144,11 @@ def login(
             detail="Incorrect username or password",
             headers={"WWW-Authenticate": "Bearer"},
         )
-    stored_hash = user.hashed_password if user is not None else DUMMY_HASH
+    stored_hash = (
+        user.hashed_password
+        if user is not None and user.hashed_password
+        else DUMMY_HASH
+    )
     password_ok = verify_password(form_data.password, stored_hash)
     if user is None or not password_ok:
         if user is not None:
@@ -284,6 +288,11 @@ def change_password(
     response: Response,
     db: Annotated[Session, Depends(get_db)],
 ):
+    if current_user.hashed_password is None:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="This account signs in with Google and has no password",
+        )
     if not verify_password(payload.current_password, current_user.hashed_password):
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,

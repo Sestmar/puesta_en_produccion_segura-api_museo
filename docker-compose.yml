@@ -44,6 +44,10 @@ services:
       FORCE_HTTPS: ${FORCE_HTTPS:-false}
       RATELIMIT_STORAGE_URI: ${RATELIMIT_STORAGE_URI:-redis://redis:6379/0}
       LOG_LEVEL: ${LOG_LEVEL:-INFO}
+      GOOGLE_CLIENT_ID: ${GOOGLE_CLIENT_ID:-}
+      GOOGLE_CLIENT_SECRET: ${GOOGLE_CLIENT_SECRET:-}
+      GOOGLE_REDIRECT_URI: ${GOOGLE_REDIRECT_URI:-http://localhost:8001/auth/google/callback}
+      FRONTEND_URL: ${FRONTEND_URL:-http://localhost:5173}
     depends_on:
       db:
         condition: service_healthy
@@ -75,7 +79,9 @@ services:
       target: dev
     restart: unless-stopped
     environment:
-      VITE_API_URL: ${VITE_API_URL:-http://127.0.0.1:8001}
+      # Same host as GOOGLE_REDIRECT_URI/FRONTEND_URL: the refresh cookie is
+      # host-scoped and is not shared between localhost and 127.0.0.1.
+      VITE_API_URL: ${VITE_API_URL:-http://localhost:8001}
     ports:
       - "5173:5173"
     volumes:

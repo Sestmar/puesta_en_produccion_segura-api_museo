@@ -8,7 +8,7 @@ Cómo cumple el proyecto cada requisito de la aplicación distribuida:
 
 **1. Backend en Python y frontend en React, separados.** El backend (`app/`) es una API FastAPI que solo habla JSON; el frontend (`frontend/`) es una SPA React independiente que consume esa API por HTTP. Cada uno tiene su propio `Dockerfile`, sus dependencias y su servicio en `docker-compose.yml` (`api` en el puerto 8001, `frontend` en el 5173). La comunicación entre orígenes se controla con CORS (`CORS_ORIGINS`, `allow_credentials`).
 
-**2. Registro de usuarios y almacenamiento seguro de las claves.** Cualquiera puede crear una cuenta en `/registro` (`POST /auth/signup`). Las contraseñas:
+**2. Registro de usuarios y almacenamiento seguro de las claves.** Cualquiera puede crear una cuenta en `/registro` (`POST /auth/signup`), o entrar con su cuenta de Google (`GET /auth/google/login`). Las contraseñas:
 
 - nunca se guardan en claro: se almacena solo su hash **bcrypt** con sal aleatoria por contraseña y coste configurable (`BCRYPT_ROUNDS`, por defecto 12, es decir 2¹² iteraciones), lo que hace muy caro un ataque de diccionario aunque se filtre la base de datos;
 - deben cumplir una política mínima (8–72 caracteres, al menos una letra y un dígito; 72 es el límite de bcrypt);
@@ -34,6 +34,7 @@ Además, el registro está limitado por IP (`SIGNUP_RATE_LIMIT`), el cliente no 
 |---|:---:|:---:|:---:|:---:|
 | Explorar el catálogo (obras, artistas, salas) | ✅ | ✅ | ✅ | ✅ |
 | Crear su propia cuenta (`/auth/signup`, siempre como `client`) | ✅ | — | — | — |
+| Iniciar sesión con Google (`/auth/google/login`, crea la cuenta si no existe) | ✅ | ✅ | ✅ | ✅ |
 | Ver y gestionar su cuenta, contraseña y sesiones | — | ✅ | ✅ | ✅ |
 | Guardar obras en favoritos ("Mi colección") | — | ✅ | ✅ | ✅ |
 | Crear, editar y borrar obras, artistas y salas | — | — | ✅ | ✅ |
@@ -47,6 +48,7 @@ El primer usuario del sistema se crea con `POST /auth/register` y es siempre `ad
 - **Entidades**: artistas, salas y obras (con relaciones e integridad referencial)
 - **Autenticación**: flujo de contraseña OAuth2 con *access token* JWT de corta durada (30 min) y *refresh token* opaco entregado en una cookie `httpOnly` + `Secure` + `SameSite`. Revocar la sesión (logout, cambio de contraseña, detección de reuso o cierre de todas las sesiones) invalida el acceso al instante
 - **Registro público**: `POST /auth/signup` permite a cualquiera crear su propia cuenta, siempre con el rol `client` (ver [Roles y permisos](#roles-y-permisos))
+- **Inicio de sesión con Google (OAuth 2.0)**: el botón "Continuar con Google" de la página de acceso envía al usuario al consentimiento de Google (`GET /auth/google/login`) y su vuelta se procesa en `GET /auth/google/callback`. La cuenta se localiza por `(provider, subject)` y, si no existe, se crea como `client` (o `admin` si es la primera de la instalación). El callback no devuelve el token en la URL: entrega el refresh token en la misma cookie `httpOnly` que `/auth/login` y redirige al frontend, que canjea la cookie por un access token llamando a `/auth/refresh`. El parámetro `state` es un nonce firmado con `SECRET_KEY`, así que el flujo no necesita estado en el servidor ni defensa CSRF adicional. Sin `GOOGLE_CLIENT_ID`/`GOOGLE_CLIENT_SECRET` los endpoints responden `503` y el botón debe ocultarse. `GOOGLE_REDIRECT_URI`, `FRONTEND_URL` y `VITE_API_URL` deben usar el mismo host (`localhost`): el callback deja la cookie en el host de la redirect URI y el frontend debe pedir `/auth/refresh` a ese mismo host
 - **Autorización**: tres roles — `admin` (todo, incluidos usuarios y auditoría), `manager` (gestiona el catálogo: obras, artistas y salas) y `client` (usuario final: explora el catálogo y gestiona sus favoritos); los usuarios no autenticados pueden explorar el catálogo
 - **Favoritos por usuario**: cualquier usuario autenticado guarda obras en `/me/favorites`; el propietario se toma siempre del access token y nunca de la URL o del cuerpo, por lo que no es posible leer ni modificar los favoritos de otra persona (sin superficie IDOR)
 - **Gestión de usuarios** (solo admin): `GET /users` para listar, y `PATCH /users/{id}` para cambiar el rol o activar/desactivar una cuenta. Desactivar una cuenta revoca sus sesiones en el acto y bloquea el login (con el mismo error genérico, sin revelar el motivo); un admin no puede modificarse a sí mismo, lo que evita el auto-bloqueo
@@ -88,7 +90,11 @@ docker compose up --build
 Esto inicia PostgreSQL, Redis, la API y el frontend, aplica las migraciones de Alembic automáticamente y expone:
 
 - Frontend: `http://localhost:5173`
-- API: `http://127.0.0.1:8001` (docs en `http://127.0.0.1:8001/docs`)
+- API: `http://localhost:8001` (docs en `http://localhost:8001/docs`)
+
+Usa siempre `localhost` (no `127.0.0.1`) para entrar en la aplicación: la cookie
+httpOnly del refresh token está ligada al host y el navegador no la comparte
+entre `localhost` y `127.0.0.1`.
 
 Los datos de Postgres persisten en el volumen `pgdata`.
 
@@ -104,7 +110,11 @@ alembic upgrade head            # crea el esquema
 uvicorn app.main:app --reload
 ```
 
-Base de la API: `http://127.0.0.1:8000` — docs: `http://127.0.0.1:8000/docs`
+Base de la API: `http://localhost:8000` — docs: `http://localhost:8000/docs`
+
+En local, ajusta también `GOOGLE_REDIRECT_URI=http://localhost:8000/auth/google/callback`
+y `VITE_API_URL=http://localhost:8000` en `frontend/.env`; los tres valores deben
+usar el mismo host.
 
 ## Seed de datos e imágenes
 
@@ -206,7 +216,7 @@ curl -X POST http://127.0.0.1:8000/artists ^
 curl -X POST http://127.0.0.1:8000/auth/refresh -b cookies.txt -c cookies.txt
 ```
 
-Con `REFRESH_COOKIE_SECURE=true` (el valor por defecto) la cookie solo viaja por HTTPS, así que el paso 5 no funciona contra `http://`. Para probar en local sin HTTPS define `REFRESH_COOKIE_SECURE=false`, como ya hace `docker-compose.yml`.
+Con `REFRESH_COOKIE_SECURE=true` (obligatorio en producción) la cookie solo viaja por HTTPS, así que el paso 5 no funciona contra `http://`. Para probar en local sin HTTPS usa `REFRESH_COOKIE_SECURE=false`, como hacen `.env.example` y `docker-compose.yml`.
 
 `/auth/login` devuelve el `access_token` en el body y setea el `refresh_token` en una cookie `httpOnly`, `Secure`, `SameSite=Lax` (path `/auth`). El frontend no puede leer el refresh token; el navegador lo envía automáticamente en `/auth/refresh`. Los refresh tokens son sesiones revocables del lado del servidor:
 `POST /auth/refresh` rota la sesión y la cookie (reutilizar un token ya rotado revoca todas las sesiones del usuario),
@@ -218,6 +228,8 @@ Con `REFRESH_COOKIE_SECURE=true` (el valor por defecto) la cookie solo viaja por
 |---|---|---|---|
 | POST | `/auth/register` | admin (abierto con la base de datos vacía) | Crear usuario con cualquier rol |
 | POST | `/auth/signup` | público (`SIGNUP_RATE_LIMIT`, por defecto 10/hora) | Registro de un usuario `client`; rechaza el campo `role` (422) y no está disponible hasta que exista el primer admin (503) |
+| GET | `/auth/google/login` | público (`OAUTH_RATE_LIMIT`) | Redirige (307) al consentimiento de Google; 503 si OAuth no está configurado |
+| GET | `/auth/google/callback` | público (`OAUTH_RATE_LIMIT`) | Procesa el código, setea el refresh token en cookie httpOnly y redirige a `FRONTEND_URL/login?oauth=success\|error` |
 | POST | `/auth/login` | público (con límite de tasa) | Obtener access token; setea refresh token en cookie httpOnly |
 | POST | `/auth/refresh` | público (cookie httpOnly) | Rotar refresh token (emite nuevo access token y cookie) |
 | POST | `/auth/logout` | público (cookie httpOnly) | Revocar la sesión de la cookie y borrarla |
@@ -263,6 +275,7 @@ app/
   models.py       Modelos SQLAlchemy (users, auth_sessions, audit_logs, artists, rooms, artworks, favorites)
   schemas.py      Esquemas de validación Pydantic
   security.py     Hash bcrypt + creación/verificación de JWT
+  oauth.py        Cliente de Google OAuth 2.0 (state firmado, intercambio de código, userinfo, alta de usuario)
   deps.py         Dependencias de autenticación (get_current_user, require_role, require_admin, require_catalog_editor)
   audit.py        Helper de AuditLog (acción, actor, recurso, request id) + cadena de hash tamper-evident
   anchor.py       Anclaje externo de la cabecera de la cadena (archivo firmado) para detectar truncado
@@ -271,14 +284,14 @@ app/
   ratelimit.py    Instancia del limitador de slowapi
   logging_config.py  Formateador JSON + contexto de request-id + configuración de logging
   middleware.py   Cabeceras de seguridad + contexto de solicitud (request id, log de acceso)
-  routers/        health, metrics, auth, users, audit, artists, rooms, artworks, favorites
+  routers/        health, metrics, auth, oauth, users, audit, artists, rooms, artworks, favorites
 alembic/          Entorno de migraciones + scripts versionados (env.py, versions/)
 alembic.ini       Configuración de Alembic (la URL se sobrescribe desde la configuración de la app)
 Dockerfile        Imagen multietapa (builder + runtime slim, usuario no root)
 docker-compose.yml  API + PostgreSQL con healthchecks
 requirements.txt      Dependencias de runtime
 requirements-dev.txt  Dependencias de runtime + pruebas
-tests/            229 pruebas (auth, registro público, roles y migración de roles, favoritos, RBAC, sesiones, tope de sesiones, revocación de token, bloqueo, cambio de contraseña, gestión de usuarios, auditoría, consulta de auditoría, cadena de hash, ancla externa, retención, cabeceras y CSP, redirección HTTPS, límite de tasa global, proxy-aware, CRUD, límites)
+tests/            247 pruebas (auth, registro público, OAuth Google, roles y migración de roles, favoritos, RBAC, sesiones, tope de sesiones, revocación de token, bloqueo, cambio de contraseña, gestión de usuarios, auditoría, consulta de auditoría, cadena de hash, ancla externa, retención, cabeceras y CSP, redirección HTTPS, límite de tasa global, proxy-aware, CRUD, límites)
 .github/workflows/ci.yml  CI: pruebas, ruff + mypy, migraciones en PostgreSQL, pip-audit y gitleaks
 ```
 

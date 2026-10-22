@@ -98,6 +98,17 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setUser(me);
   }, []);
 
+  // Vuelta desde el callback de Google: el backend ya dejó la cookie httpOnly,
+  // así que canjeamos el refresh token por un access token y cargamos el perfil.
+  const completeOAuth = useCallback(async () => {
+    const token = await refreshAccessToken();
+    if (!token) throw new Error("No se pudo completar el inicio de sesión");
+    setSessionHint(true);
+    const me = await authApi.me();
+    setUser(me);
+    setStatus("authenticated");
+  }, []);
+
   const value = useMemo(
     () => ({
       user,
@@ -107,8 +118,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       login,
       logout,
       refreshUser,
+      completeOAuth,
     }),
-    [user, status, login, logout, refreshUser],
+    [user, status, login, logout, refreshUser, completeOAuth],
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

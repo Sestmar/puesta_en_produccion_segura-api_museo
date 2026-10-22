@@ -26,7 +26,7 @@ def set_refresh_cookie(response: Response, token: str) -> None:
         secure=settings.refresh_cookie_secure,
         samesite=_parse_samesite(settings.refresh_cookie_samesite),
         max_age=int(settings.refresh_token_expire_days * 24 * 60 * 60),
-        path="/auth",
+        path="/",
     )
 
 
@@ -34,7 +34,7 @@ def clear_refresh_cookie(response: Response) -> None:
     """Expire the refresh-token cookie immediately."""
     response.delete_cookie(
         key=REFRESH_COOKIE_NAME,
-        path="/auth",
+        path="/",
     )
 
 
