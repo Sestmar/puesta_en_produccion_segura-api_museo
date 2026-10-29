@@ -1,3 +1,6 @@
+import ipaddress
+
+from pydantic import field_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 # Known placeholder secrets shipped in dev config, examples and docker-compose.
@@ -56,6 +59,9 @@ class Settings(BaseSettings):
     log_level: str = "INFO"
     ratelimit_storage_uri: str | None = None
     trusted_proxies: list[str] = []
+    # Empty: /metrics is public. Otherwise only direct (not proxied) requests from
+    # these IPs/CIDR ranges may read it.
+    metrics_allowed_networks: list[str] = []
     audit_anchor_path: str | None = None
     db_pool_size: int = 5
     db_max_overflow: int = 10
@@ -67,6 +73,16 @@ class Settings(BaseSettings):
     google_client_id: str | None = None
     google_client_secret: str | None = None
     google_redirect_uri: str = "http://localhost:8000/auth/google/callback"
+
+    @field_validator("trusted_proxies", "metrics_allowed_networks")
+    @classmethod
+    def _require_ip_or_cidr(cls, entries: list[str]) -> list[str]:
+        for entry in entries:
+            try:
+                ipaddress.ip_network(entry, strict=False)
+            except ValueError as exc:
+                raise ValueError(f"{entry!r} is not an IP address or CIDR range") from exc
+        return entries
 
 
 settings = Settings()
