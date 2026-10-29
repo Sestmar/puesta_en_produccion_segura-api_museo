@@ -32,18 +32,23 @@ La función `google_configured()` comprueba que ambos `GOOGLE_CLIENT_ID` y `GOOG
 - Si no está configurado → `503`.
 - Parámetros: `code`, `state`, `error` (opcionales).
 - Si hay `error` o falta `code`/`state` → redirige a `${FRONTEND_URL}/login?oauth=error` (`303`).
-- Si `state` inválido o caducado → `400 Bad Request` ("Invalid or expired OAuth state").
+- Si `state` es inválido, ha caducado o no coincide con la cookie `oauth_state` → `400 Bad Request` ("Invalid or expired OAuth state").
 - Intercambio: `exchange_code(code)` llama a `https://oauth2.googleapis.com/token` con `grant_type=authorization_code`, credenciales y `redirect_uri`. Devuelve el `access_token` o lanza `OAuthError`.
-- Identidad: `fetch_userinfo(access_token)` llama a `https://openidconnect.googleapis.com/v1/userinfo` con `Authorization: Bearer`. Requiere `sub`, `email` y que `email_verified` no sea `false`. Lanza `OAuthError` si falla.
+- Identidad: `fetch_userinfo(access_token)` llama a `https://openidconnect.googleapis.com/v1/userinfo` con `Authorization: Bearer`. Requiere `sub`, `email` y que `email_verified` sea exactamente `true` (si falta, se rechaza). Lanza `OAuthError` si falla.
 - Usuario: `find_or_create_user(db, subject=identity["sub"], email=identity["email"])` resuelve/crea el usuario local.
 - Si el usuario existe pero está inactivo (`user.is_active` False) → registra evento `auth.login.blocked` con `provider: "google"` y redirige a `/login?oauth=error`.
 - Si OK: registra evento `auth.oauth.signup` (si creado) o `auth.oauth.login` (si existente) con `username`, `role`, `provider: "google"`. Crea sesión con `create_session(db, user=user, request=request)`, establece cookie refresh httpOnly con `set_refresh_cookie`, redirige a `${FRONTEND_URL}/login?oauth=success`.
 
-## Protección CSRF con `state` firmado
+## Protección CSRF con `state` firmado y ligado al navegador
 
 El `state` es **sin estado en servidor**:
 - `create_state()`: genera `nonce.timestamp` con `secrets.token_urlsafe(24)` y `time.time()`, firma con HMAC-SHA256 usando `settings.secret_key` → `nonce.timestamp.signature`.
 - `verify_state(state)`: parsea 3 partes, verifica firma con `hmac.compare_digest`, comprueba que `timestamp` esté dentro de `STATE_MAX_AGE_SECONDS` (600s). Rechaza formato/tampering/caducidad.
+
+La firma solo prueba que el `state` lo emitió el servidor, no que lo haya pedido **este** navegador. Sin más, un atacante podría iniciar el flujo con su propia cuenta de Google, quedarse con la URL del callback (código + `state` válidos) y hacer que la víctima la abra: la víctima acabaría dentro de la cuenta del atacante (*login CSRF*). Por eso:
+- `/auth/google/login` guarda el mismo `state` en la cookie `oauth_state` (`httpOnly`, `SameSite=Lax`, `Path=/auth/google`, caduca con el `state`). `Lax` es necesario porque Google vuelve con una navegación GET entre sitios.
+- El callback exige además `state_matches(state, cookie)` (comparación en tiempo constante); si falta o no coincide → `400`.
+- Toda redirección del callback borra la cookie `oauth_state`.
 
 ## Resolución y creación de usuario
 
@@ -54,12 +59,12 @@ El `state` es **sin estado en servidor**:
 
 Notas importantes:
 - Usuarios creados por Google **no tienen contraseña** (`hashed_password=None`). El endpoint `PUT /auth/password` rechaza con `400 "This account signs in with Google and has no password"`.
-- El login por contraseña (`/auth/login`) rechaza usuarios OAuth (test `test_oauth_user_cannot_use_password_login`): si `hashed_password` es `None`, la verificación usa `DUMMY_HASH` y `password_ok` será falso → `401`.
+- El login por contraseña (`/auth/login`) rechaza siempre a los usuarios OAuth con `401`. Si `hashed_password` es `None`, se ejecuta igualmente bcrypt contra `DUMMY_HASH` para que el tiempo de respuesta no delate la cuenta, pero el resultado se descarta: el texto en claro de `DUMMY_HASH` está en el código, así que nunca puede servir para autenticar (tests `test_oauth_user_cannot_use_password_login` y `test_oauth_user_cannot_login_with_the_dummy_hash_password`).
 - El primer usuario vía Google también se convierte en `admin` (consistente con el bootstrap de `/auth/register`).
 
 ## Sesiones, cookies y auditoría
 
-- Tras autenticación OAuth exitosa se crea sesión igual que en login tradicional: `create_session` genera refresh token + registro en `auth_sessions`, `set_refresh_cookie` establece cookie `httpOnly` + `Secure` + `SameSite=Lax` scoped a `/auth` (configurable). El SPA obtiene el access token llamando a `POST /auth/refresh` tras el redirect.
+- Tras autenticación OAuth exitosa se crea sesión igual que en login tradicional: `create_session` genera refresh token + registro en `auth_sessions`, `set_refresh_cookie` establece cookie `httpOnly` + `Secure` (configurable con `REFRESH_COOKIE_SECURE`) + `SameSite=Lax` restringida a `Path=/auth`, y expira cualquier copia antigua con `Path=/`. El SPA obtiene el access token llamando a `POST /auth/refresh` tras el redirect.
 - Eventos auditados: `auth.oauth.signup`, `auth.oauth.login`, `auth.login.blocked` (usuario inactivo), y los errores se traducen a redirecciones con `?oauth=error`.
 - Rate limiting aplicado en `/auth/google/login` y `/auth/google/callback` con `oauth_rate_limit`.
 
@@ -76,6 +81,8 @@ El test `test_oauth_migration_upgrades_and_downgrades` valida upgrade/downgrade 
 ## Frontend
 
 En el contexto de auth (`frontend/src/context/auth-context.ts`) existe `completeOAuth()` para canjear la cookie httpOnly por un access token tras el flujo OAuth.
+
+La página de login consulta `GET /auth/google/status` y solo muestra "Continuar con Google" si el backend tiene las credenciales configuradas.
 
 ## Tests relevantes
 

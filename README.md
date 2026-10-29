@@ -48,7 +48,7 @@ El primer usuario del sistema se crea con `POST /auth/register` y es siempre `ad
 - **Entidades**: artistas, salas y obras (con relaciones e integridad referencial)
 - **Autenticación**: flujo de contraseña OAuth2 con *access token* JWT de corta durada (30 min) y *refresh token* opaco entregado en una cookie `httpOnly` + `Secure` + `SameSite`. Revocar la sesión (logout, cambio de contraseña, detección de reuso o cierre de todas las sesiones) invalida el acceso al instante
 - **Registro público**: `POST /auth/signup` permite a cualquiera crear su propia cuenta, siempre con el rol `client` (ver [Roles y permisos](#roles-y-permisos))
-- **Inicio de sesión con Google (OAuth 2.0)**: el botón "Continuar con Google" de la página de acceso envía al usuario al consentimiento de Google (`GET /auth/google/login`) y su vuelta se procesa en `GET /auth/google/callback`. La cuenta se localiza por `(provider, subject)` y, si no existe, se crea como `client` (o `admin` si es la primera de la instalación). El callback no devuelve el token en la URL: entrega el refresh token en la misma cookie `httpOnly` que `/auth/login` y redirige al frontend, que canjea la cookie por un access token llamando a `/auth/refresh`. El parámetro `state` es un nonce firmado con `SECRET_KEY`, así que el flujo no necesita estado en el servidor ni defensa CSRF adicional. Sin `GOOGLE_CLIENT_ID`/`GOOGLE_CLIENT_SECRET` los endpoints responden `503` y el botón debe ocultarse. `GOOGLE_REDIRECT_URI`, `FRONTEND_URL` y `VITE_API_URL` deben usar el mismo host (`localhost`): el callback deja la cookie en el host de la redirect URI y el frontend debe pedir `/auth/refresh` a ese mismo host
+- **Inicio de sesión con Google (OAuth 2.0)**: el botón "Continuar con Google" de la página de acceso envía al usuario al consentimiento de Google (`GET /auth/google/login`) y su vuelta se procesa en `GET /auth/google/callback`. La cuenta se localiza por `(provider, subject)` y, si no existe, se crea como `client` (o `admin` si es la primera de la instalación). El callback no devuelve el token en la URL: entrega el refresh token en la misma cookie `httpOnly` que `/auth/login` y redirige al frontend, que canjea la cookie por un access token llamando a `/auth/refresh`. El parámetro `state` es un nonce con marca de tiempo firmado con `SECRET_KEY` (caduca a los 10 min), así que el servidor no necesita guardarlo. Además, `/auth/google/login` lo deja en una cookie `httpOnly` de corta duración (`oauth_state`, `Path=/auth/google`) y el callback exige que coincida con el de la URL: así el flujo queda ligado al navegador que lo inició y un atacante no puede colar su propio código para dejar a la víctima dentro de la cuenta del atacante (*login CSRF*). Solo se aceptan cuentas cuyo email Google marca como verificado, y una cuenta de Google nunca puede entrar por `/auth/login`, porque no tiene contraseña. Sin `GOOGLE_CLIENT_ID`/`GOOGLE_CLIENT_SECRET` los endpoints responden `503` y el frontend oculta el botón, porque lo consulta en `GET /auth/google/status`. `GOOGLE_REDIRECT_URI`, `FRONTEND_URL` y `VITE_API_URL` deben usar el mismo host (`localhost`): el callback deja la cookie en el host de la redirect URI y el frontend debe pedir `/auth/refresh` a ese mismo host
 - **Autorización**: tres roles — `admin` (todo, incluidos usuarios y auditoría), `manager` (gestiona el catálogo: obras, artistas y salas) y `client` (usuario final: explora el catálogo y gestiona sus favoritos); los usuarios no autenticados pueden explorar el catálogo
 - **Favoritos por usuario**: cualquier usuario autenticado guarda obras en `/me/favorites`; el propietario se toma siempre del access token y nunca de la URL o del cuerpo, por lo que no es posible leer ni modificar los favoritos de otra persona (sin superficie IDOR)
 - **Gestión de usuarios** (solo admin): `GET /users` para listar, y `PATCH /users/{id}` para cambiar el rol o activar/desactivar una cuenta. Desactivar una cuenta revoca sus sesiones en el acto y bloquea el login (con el mismo error genérico, sin revelar el motivo); un admin no puede modificarse a sí mismo, lo que evita el auto-bloqueo
@@ -151,7 +151,7 @@ pip install -r requirements-dev.txt
 pytest
 ```
 
-Las pruebas corren contra SQLite y dejan la suite completa en verde (229 tests). `pytest` aplica además el umbral de cobertura de ramas (mínimo 90 %).
+Las pruebas corren contra SQLite y dejan la suite completa en verde (256 tests). `pytest` aplica además el umbral de cobertura de ramas (mínimo 90 %).
 
 ## Calidad del código
 
@@ -228,8 +228,9 @@ Con `REFRESH_COOKIE_SECURE=true` (obligatorio en producción) la cookie solo via
 |---|---|---|---|
 | POST | `/auth/register` | admin (abierto con la base de datos vacía) | Crear usuario con cualquier rol |
 | POST | `/auth/signup` | público (`SIGNUP_RATE_LIMIT`, por defecto 10/hora) | Registro de un usuario `client`; rechaza el campo `role` (422) y no está disponible hasta que exista el primer admin (503) |
-| GET | `/auth/google/login` | público (`OAUTH_RATE_LIMIT`) | Redirige (307) al consentimiento de Google; 503 si OAuth no está configurado |
-| GET | `/auth/google/callback` | público (`OAUTH_RATE_LIMIT`) | Procesa el código, setea el refresh token en cookie httpOnly y redirige a `FRONTEND_URL/login?oauth=success\|error` |
+| GET | `/auth/google/status` | público | `{"enabled": bool}`: indica si el inicio de sesión con Google está configurado |
+| GET | `/auth/google/login` | público (`OAUTH_RATE_LIMIT`) | Redirige (307) al consentimiento de Google y deja el `state` en la cookie `oauth_state`; 503 si OAuth no está configurado |
+| GET | `/auth/google/callback` | público (`OAUTH_RATE_LIMIT`) | Exige que el `state` coincida con la cookie `oauth_state` (400 si no); procesa el código, setea el refresh token en cookie httpOnly y redirige a `FRONTEND_URL/login?oauth=success\|error` |
 | POST | `/auth/login` | público (con límite de tasa) | Obtener access token; setea refresh token en cookie httpOnly |
 | POST | `/auth/refresh` | público (cookie httpOnly) | Rotar refresh token (emite nuevo access token y cookie) |
 | POST | `/auth/logout` | público (cookie httpOnly) | Revocar la sesión de la cookie y borrarla |
@@ -291,7 +292,7 @@ Dockerfile        Imagen multietapa (builder + runtime slim, usuario no root)
 docker-compose.yml  API + PostgreSQL con healthchecks
 requirements.txt      Dependencias de runtime
 requirements-dev.txt  Dependencias de runtime + pruebas
-tests/            247 pruebas (auth, registro público, OAuth Google, roles y migración de roles, favoritos, RBAC, sesiones, tope de sesiones, revocación de token, bloqueo, cambio de contraseña, gestión de usuarios, auditoría, consulta de auditoría, cadena de hash, ancla externa, retención, cabeceras y CSP, redirección HTTPS, límite de tasa global, proxy-aware, CRUD, límites)
+tests/            256 pruebas (auth, registro público, OAuth Google, roles y migración de roles, favoritos, RBAC, sesiones, tope de sesiones, revocación de token, bloqueo, cambio de contraseña, gestión de usuarios, auditoría, consulta de auditoría, cadena de hash, ancla externa, retención, cabeceras y CSP, redirección HTTPS, límite de tasa global, proxy-aware, CRUD, límites)
 .github/workflows/ci.yml  CI: pruebas, ruff + mypy, migraciones en PostgreSQL, pip-audit y gitleaks
 ```
 

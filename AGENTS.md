@@ -14,6 +14,7 @@
 - **First user**: `POST /auth/register` only works while there are **no users** and creates an `admin`. 
 - **Public signup**: `POST /auth/signup` always creates `client`, rejects `role` (422), is rate-limited, and returns **503 until the first admin exists**.
 - **Tokens**: access JWT (30 min) sent as `Authorization: Bearer` (frontend keeps in memory). Refresh token is `httpOnly` + `Secure` + `SameSite=Lax` cookie scoped to `/auth`, **rotated** on `/auth/refresh`; reuse revokes **all sessions**. Sessions are checked via `auth_sessions` (`sid` claim). Logout/password change/session revocation invalidate access immediately.
+- **Google OAuth**: `state` is HMAC-signed **and** must match the `oauth_state` cookie set by `/auth/google/login` (login CSRF). OAuth accounts have `hashed_password = NULL` and must never pass `/auth/login`; `DUMMY_HASH` is only for timing and its plaintext is public.
 - **Account lockout**: failed logins trigger lockout (`max_failed_attempts`/`lockout_minutes`); errors are generic to avoid user enumeration.
 
 ## Migrations & DB
