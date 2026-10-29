@@ -68,6 +68,44 @@ jobs:
       - name: Upgrade to head again
         run: alembic upgrade head
 
+  images:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - name: Build API image
+        run: docker build -t museo-api:ci .
+      - name: Build frontend image
+        run: >
+          docker build --target prod
+          --build-arg VITE_API_URL=https://api.ci.example
+          -t museo-frontend:ci ./frontend
+      - name: Smoke-test API container (production mode)
+        run: |
+          docker run -d --name api -p 8000:8000 \
+            -e ENVIRONMENT=production \
+            -e SECRET_KEY=ci-smoke-secret-not-real-0123456789abcdef \
+            -e DATABASE_URL=sqlite:////tmp/museo.db \
+            museo-api:ci
+          for _ in $(seq 30); do
+            [ "$(docker inspect -f '{{.State.Health.Status}}' api)" = healthy ] && break
+            sleep 2
+          done
+          docker logs api
+          test "$(docker inspect -f '{{.State.Health.Status}}' api)" = healthy
+          curl -fsS http://localhost:8000/health/ready
+          test "$(curl -s -o /dev/null -w '%{http_code}' http://localhost:8000/docs)" = 404
+          test "$(docker exec api id -u)" = 1000
+      - name: Smoke-test frontend container
+        run: |
+          docker run -d --name web -p 8080:8080 museo-frontend:ci
+          sleep 3
+          headers="$(curl -fsS -D - -o /dev/null http://localhost:8080/obras/1)"
+          echo "$headers"
+          echo "$headers" | grep -qi '^content-security-policy:.*connect-src .self. https://api.ci.example'
+          echo "$headers" | grep -qi '^x-frame-options: DENY'
+          echo "$headers" | grep -qi '^x-content-type-options: nosniff'
+          test "$(docker exec web id -u)" = 101
+
   security:
     runs-on: ubuntu-latest
     steps:
