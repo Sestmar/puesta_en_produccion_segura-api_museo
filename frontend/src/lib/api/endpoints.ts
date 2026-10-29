@@ -62,6 +62,12 @@ export const authApi = {
 
   me: () => apiRequest<User>("/auth/me"),
 
+  googleStatus: () =>
+    apiRequest<{ enabled: boolean }>("/auth/google/status", {
+      auth: false,
+      allowRefresh: false,
+    }),
+
   sessions: () => apiRequest<Session[]>("/auth/sessions"),
 
   revokeSession: (id: number) =>

@@ -25,6 +25,16 @@ import type {
   User,
 } from "@/lib/api/types";
 
+export function useGoogleLoginEnabled(): boolean {
+  const { data } = useQuery({
+    queryKey: qk.googleStatus,
+    queryFn: authApi.googleStatus,
+    staleTime: Infinity,
+    retry: false,
+  });
+  return data?.enabled ?? false;
+}
+
 export function useArtists(params: ListParams = {}): UseQueryResult<Page<Artist>> {
   return useQuery({
     queryKey: qk.artists.list(params),

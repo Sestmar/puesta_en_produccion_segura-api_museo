@@ -11,6 +11,7 @@ import type {
 export const qk = {
   me: ["me"] as const,
   sessions: ["sessions"] as const,
+  googleStatus: ["auth", "google-status"] as const,
 
   users: {
     all: ["users"] as const,

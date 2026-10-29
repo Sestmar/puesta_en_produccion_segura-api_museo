@@ -10,6 +10,7 @@ import { Button } from "@/components/ui/button";
 import { Field } from "@/components/ui/field";
 import { Input } from "@/components/ui/input";
 import { useAuth } from "@/hooks/useAuth";
+import { useGoogleLoginEnabled } from "@/hooks/queries";
 import { isApiError } from "@/lib/api/client";
 import { GOOGLE_LOGIN_URL } from "@/lib/env";
 import { imageForSeed } from "@/lib/images";
@@ -34,6 +35,7 @@ export function LoginPage() {
   const [searchParams, setSearchParams] = useSearchParams();
   const [serverError, setServerError] = useState<string | null>(null);
   const handledOAuth = useRef(false);
+  const googleEnabled = useGoogleLoginEnabled();
 
   const state = location.state as LocationState | null;
   const from = state?.from ?? "/";
@@ -203,19 +205,23 @@ export function LoginPage() {
             </Button>
           </form>
 
-          <div className="mt-6 flex items-center gap-4" aria-hidden="true">
-            <span className="h-px flex-1 bg-white/10" />
-            <span className="font-display text-[11px] font-bold uppercase tracking-[0.16em] text-mute-500">
-              o
-            </span>
-            <span className="h-px flex-1 bg-white/10" />
-          </div>
+          {googleEnabled ? (
+            <>
+              <div className="mt-6 flex items-center gap-4" aria-hidden="true">
+                <span className="h-px flex-1 bg-white/10" />
+                <span className="font-display text-[11px] font-bold uppercase tracking-[0.16em] text-mute-500">
+                  o
+                </span>
+                <span className="h-px flex-1 bg-white/10" />
+              </div>
 
-          <a href={GOOGLE_LOGIN_URL} className="mt-6 block">
-            <Button type="button" variant="secondary" size="lg" className="w-full">
-              <GoogleIcon /> Continuar con Google
-            </Button>
-          </a>
+              <Button asChild variant="secondary" size="lg" className="mt-6 w-full">
+                <a href={GOOGLE_LOGIN_URL}>
+                  <GoogleIcon /> Continuar con Google
+                </a>
+              </Button>
+            </>
+          ) : null}
 
           <p className="mt-6 text-center text-sm text-mute-400">
             ¿No tienes cuenta?{" "}
