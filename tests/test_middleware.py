@@ -1,3 +1,6 @@
+import pytest
+
+
 def test_health_endpoint(client):
     r = client.get("/health")
     assert r.status_code == 200
@@ -86,6 +89,29 @@ def test_cors_preflight_for_allowed_origin(client):
     assert r.status_code == 200
     assert r.headers.get("access-control-allow-origin") == "http://localhost:3000"
     assert "Authorization" in r.headers.get("access-control-allow-headers", "")
+
+
+@pytest.mark.parametrize(
+    ("method", "path"),
+    [
+        ("GET", "/artworks"),
+        ("POST", "/artworks"),
+        ("PUT", "/artworks/1"),
+        ("PATCH", "/users/1"),
+        ("DELETE", "/artworks/1"),
+    ],
+)
+def test_cors_preflight_allows_every_method_the_frontend_uses(client, method, path):
+    r = client.options(
+        path,
+        headers={
+            "Origin": "http://localhost:3000",
+            "Access-Control-Request-Method": method,
+            "Access-Control-Request-Headers": "Authorization,Content-Type",
+        },
+    )
+    assert r.status_code == 200
+    assert method in r.headers.get("access-control-allow-methods", "")
 
 
 def test_openapi_docs_are_available(client):
