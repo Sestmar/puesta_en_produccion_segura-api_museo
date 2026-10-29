@@ -1,7 +1,11 @@
 import re
 
+import pytest
+from starlette.requests import Request
+
 from app.config import settings
 from app.database import build_engine
+from app.routers.metrics import metrics_access_allowed
 
 
 def test_metrics_endpoint_returns_prometheus_format(client):
@@ -34,6 +38,48 @@ def test_metrics_endpoint_is_rate_limit_exempt(client):
     from app.ratelimit import limiter
 
     assert "app.routers.metrics.metrics" in limiter._exempt_routes
+
+
+def _request(peer, headers=None):
+    raw = [(k.encode("latin-1"), v.encode("latin-1")) for k, v in (headers or {}).items()]
+    scope = {
+        "type": "http",
+        "method": "GET",
+        "path": "/metrics",
+        "headers": raw,
+        "client": peer,
+    }
+    return Request(scope)
+
+
+def test_metrics_are_public_when_no_networks_are_configured(monkeypatch):
+    monkeypatch.setattr(settings, "metrics_allowed_networks", [])
+    assert metrics_access_allowed(_request(("203.0.113.7", 1), {"x-forwarded-for": "1.1.1.1"}))
+
+
+def test_metrics_allow_direct_scrape_from_internal_network(monkeypatch):
+    monkeypatch.setattr(settings, "metrics_allowed_networks", ["10.0.0.0/8"])
+    assert metrics_access_allowed(_request(("10.0.1.9", 1)))
+
+
+@pytest.mark.parametrize("header", ["x-forwarded-for", "x-real-ip", "forwarded"])
+def test_metrics_refuse_proxied_requests_even_from_internal_peer(monkeypatch, header):
+    """Traffic from the internet reaches the API through the proxy, whose IP is internal."""
+    monkeypatch.setattr(settings, "metrics_allowed_networks", ["10.0.0.0/8"])
+    assert not metrics_access_allowed(_request(("10.0.1.9", 1), {header: "203.0.113.7"}))
+
+
+def test_metrics_refuse_peers_outside_the_allowed_networks(monkeypatch):
+    monkeypatch.setattr(settings, "metrics_allowed_networks", ["10.0.0.0/8"])
+    assert not metrics_access_allowed(_request(("172.18.0.5", 1)))
+    assert not metrics_access_allowed(_request(None))
+
+
+def test_restricted_metrics_answer_404_through_the_api(client, monkeypatch):
+    monkeypatch.setattr(settings, "metrics_allowed_networks", ["10.0.0.0/8"])
+    r = client.get("/metrics", headers={"X-Forwarded-For": "203.0.113.7"})
+    assert r.status_code == 404
+    assert "http_requests_total" not in r.text
 
 
 def test_db_pool_settings_defaults():
