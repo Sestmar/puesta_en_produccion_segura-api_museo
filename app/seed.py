@@ -38,7 +38,11 @@ QUERIES = [
 def _fetch(url: str) -> dict[str, Any]:
     req = urllib.request.Request(
         url,
-        headers={"AIC-User-Agent": "museo-seed (educational use)"},
+        # api.artic.edu answers 403 to the default "Python-urllib" User-Agent.
+        headers={
+            "User-Agent": "museo-seed/1.0 (educational use)",
+            "AIC-User-Agent": "museo-seed (educational use)",
+        },
     )
     with urllib.request.urlopen(req, timeout=30) as response:
         return json.loads(response.read().decode("utf-8"))
