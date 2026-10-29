@@ -144,12 +144,13 @@ def login(
             detail="Incorrect username or password",
             headers={"WWW-Authenticate": "Bearer"},
         )
-    stored_hash = (
-        user.hashed_password
-        if user is not None and user.hashed_password
-        else DUMMY_HASH
+    stored_hash = user.hashed_password if user is not None else None
+    # Accounts without a password (OAuth) still pay the bcrypt cost so timing does
+    # not reveal them, but DUMMY_HASH must never authenticate: its plaintext is public.
+    password_ok = (
+        verify_password(form_data.password, stored_hash or DUMMY_HASH)
+        and stored_hash is not None
     )
-    password_ok = verify_password(form_data.password, stored_hash)
     if user is None or not password_ok:
         if user is not None:
             user.failed_login_attempts += 1

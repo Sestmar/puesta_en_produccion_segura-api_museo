@@ -15,9 +15,15 @@ from sqlalchemy.orm import Session
 
 from app.audit import AuditAction, record_event
 from app.config import settings
-from app.cookies import set_refresh_cookie
+from app.cookies import (
+    OAUTH_STATE_COOKIE_NAME,
+    clear_oauth_state_cookie,
+    set_oauth_state_cookie,
+    set_refresh_cookie,
+)
 from app.database import get_db
 from app.oauth import (
+    STATE_MAX_AGE_SECONDS,
     OAuthError,
     build_authorization_url,
     create_state,
@@ -25,6 +31,7 @@ from app.oauth import (
     fetch_userinfo,
     find_or_create_user,
     google_configured,
+    state_matches,
     verify_state,
 )
 from app.ratelimit import limiter
@@ -42,9 +49,17 @@ def _not_configured() -> HTTPException:
 
 def _frontend_redirect(outcome: str) -> RedirectResponse:
     base = settings.frontend_url.rstrip("/")
-    return RedirectResponse(
+    response = RedirectResponse(
         f"{base}/login?oauth={outcome}", status_code=status.HTTP_303_SEE_OTHER
     )
+    clear_oauth_state_cookie(response)
+    return response
+
+
+@router.get("/status")
+def google_status() -> dict[str, bool]:
+    """Tell the SPA whether to offer the Google button."""
+    return {"enabled": google_configured()}
 
 
 @router.get("/login")
@@ -52,7 +67,10 @@ def _frontend_redirect(outcome: str) -> RedirectResponse:
 def google_login(request: Request):
     if not google_configured():
         raise _not_configured()
-    return RedirectResponse(build_authorization_url(create_state()))
+    state = create_state()
+    response = RedirectResponse(build_authorization_url(state))
+    set_oauth_state_cookie(response, state, STATE_MAX_AGE_SECONDS)
+    return response
 
 
 @router.get("/callback")
@@ -68,7 +86,11 @@ def google_callback(
         raise _not_configured()
     if error is not None or not code or not state:
         return _frontend_redirect("error")
-    if not verify_state(state):
+    # A valid signature only proves the server issued the state; the cookie proves
+    # this browser started the flow, which stops login CSRF with an attacker's code.
+    if not verify_state(state) or not state_matches(
+        state, request.cookies.get(OAUTH_STATE_COOKIE_NAME)
+    ):
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="Invalid or expired OAuth state",

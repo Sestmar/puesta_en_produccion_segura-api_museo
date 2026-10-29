@@ -1,8 +1,10 @@
 """Google OAuth 2.0 (authorization code) helpers.
 
 The flow is stateless on the server: the ``state`` parameter is a nonce plus a
-timestamp signed with ``SECRET_KEY`` (HMAC-SHA256), so no extra table or cookie
-is needed to defend against CSRF. Identity is resolved from Google's userinfo
+timestamp signed with ``SECRET_KEY`` (HMAC-SHA256), so no extra table is needed.
+The same value is stored in a short-lived httpOnly cookie and must match on the
+callback, which binds the flow to the browser that started it (login CSRF
+protection). Identity is resolved from Google's userinfo
 endpoint, which is queried server-to-server over TLS with the access token just
 exchanged for the authorization code.
 """
@@ -70,6 +72,10 @@ def verify_state(state: str) -> bool:
     return 0 <= time.time() - timestamp <= STATE_MAX_AGE_SECONDS
 
 
+def state_matches(state: str, cookie_state: str | None) -> bool:
+    return cookie_state is not None and hmac.compare_digest(state, cookie_state)
+
+
 def build_authorization_url(state: str) -> str:
     params = {
         "client_id": settings.google_client_id or "",
@@ -126,7 +132,7 @@ def fetch_userinfo(access_token: str) -> dict[str, Any]:
         raise OAuthError("missing subject")
     if not isinstance(email, str) or not email:
         raise OAuthError("missing email")
-    if data.get("email_verified") is False:
+    if data.get("email_verified") is not True:
         raise OAuthError("email not verified")
     return {"sub": subject, "email": email}
 

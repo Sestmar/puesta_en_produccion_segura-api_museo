@@ -1,4 +1,6 @@
+import re
 import time
+from urllib.parse import parse_qs, urlparse
 
 import pytest
 import sqlalchemy as sa
@@ -8,10 +10,12 @@ from sqlalchemy import select
 from alembic import command
 from app import oauth
 from app.config import settings
+from app.cookies import OAUTH_STATE_COOKIE_NAME
 from app.models import AuditLog, User
 from tests.conftest import login, refresh_cookie
 
 GOOGLE_CALLBACK = "/auth/google/callback"
+_SAME_AS_STATE = object()
 
 
 @pytest.fixture()
@@ -31,9 +35,31 @@ def fake_google(monkeypatch, *, sub="google-sub-1", email="ada@example.com"):
     )
 
 
-def callback(client, *, state=None, code="auth-code", **params):
-    query = {"code": code, "state": state or oauth.create_state(), **params}
-    return client.get(GOOGLE_CALLBACK, params=query, follow_redirects=False)
+def callback(
+    client, *, state=None, code="auth-code", browser_state=_SAME_AS_STATE, **params
+):
+    """Simulate Google's redirect; ``browser_state`` is the browser's state cookie."""
+    state = state or oauth.create_state()
+    if browser_state is _SAME_AS_STATE:
+        browser_state = state
+    cookies = {} if browser_state is None else {OAUTH_STATE_COOKIE_NAME: browser_state}
+    query = {"code": code, "state": state, **params}
+    return client.get(
+        GOOGLE_CALLBACK, params=query, cookies=cookies, follow_redirects=False
+    )
+
+
+def set_cookie_headers(response, name):
+    return [h for h in response.headers.get_list("set-cookie") if h.startswith(f"{name}=")]
+
+
+class FakeResponse:
+    def __init__(self, status_code, payload):
+        self.status_code = status_code
+        self._payload = payload
+
+    def json(self):
+        return self._payload
 
 
 def test_login_unavailable_when_not_configured(client, monkeypatch):
@@ -60,6 +86,49 @@ def test_login_redirects_to_google_with_state(client, google_settings):
     assert "response_type=code" in location
     assert "scope=openid+email+profile" in location
     assert "state=" in location
+
+
+def test_login_binds_state_to_browser_cookie(client, google_settings):
+    r = client.get("/auth/google/login", follow_redirects=False)
+    sent_state = parse_qs(urlparse(r.headers["location"]).query)["state"][0]
+    [header] = set_cookie_headers(r, OAUTH_STATE_COOKIE_NAME)
+    assert header.startswith(f"{OAUTH_STATE_COOKIE_NAME}={sent_state};")
+    lowered = header.lower()
+    assert "httponly" in lowered
+    assert "path=/auth/google" in lowered
+    assert "samesite=lax" in lowered
+    assert f"max-age={oauth.STATE_MAX_AGE_SECONDS}" in lowered
+
+
+def test_callback_rejects_missing_state_cookie(client, google_settings, monkeypatch):
+    fake_google(monkeypatch)
+    r = callback(client, browser_state=None)
+    assert r.status_code == 400
+
+
+def test_callback_rejects_state_from_another_browser(
+    client, google_settings, monkeypatch, db
+):
+    """Login CSRF: a valid state and code from the attacker's own flow."""
+    fake_google(monkeypatch)
+    r = callback(client, browser_state=oauth.create_state())
+    assert r.status_code == 400
+    assert db.scalar(select(User).where(User.email == "ada@example.com")) is None
+
+
+def test_callback_clears_state_cookie(client, google_settings, monkeypatch):
+    fake_google(monkeypatch)
+    r = callback(client)
+    [header] = set_cookie_headers(r, OAUTH_STATE_COOKIE_NAME)
+    assert "max-age=0" in header.lower()
+
+
+def test_status_reports_whether_google_is_configured(client, monkeypatch):
+    monkeypatch.setattr(settings, "google_client_id", None)
+    assert client.get("/auth/google/status").json() == {"enabled": False}
+    monkeypatch.setattr(settings, "google_client_id", "id")
+    monkeypatch.setattr(settings, "google_client_secret", "secret")
+    assert client.get("/auth/google/status").json() == {"enabled": True}
 
 
 def test_state_is_signed_and_rejects_tampering():
@@ -189,6 +258,47 @@ def test_oauth_user_cannot_use_password_login(client, google_settings, monkeypat
     assert callback(client).status_code == 303
     r = login(client, "ada", "SomePassword123")
     assert r.status_code == 401
+
+
+def test_oauth_user_cannot_login_with_the_dummy_hash_password(
+    client, google_settings, monkeypatch
+):
+    """The timing-equalising dummy hash has a public plaintext; it must never match."""
+    fake_google(monkeypatch)
+    assert callback(client).status_code == 303
+    r = login(client, "ada", "dummy-password-0000")
+    assert r.status_code == 401
+
+
+def test_refresh_cookie_is_scoped_to_auth_and_expires_legacy_root_cookie(
+    client, google_settings, monkeypatch
+):
+    fake_google(monkeypatch)
+    headers = set_cookie_headers(callback(client), "refresh_token")
+    [current] = [h for h in headers if "max-age=0" not in h.lower()]
+    [legacy] = [h for h in headers if "max-age=0" in h.lower()]
+    assert re.search(r"path=/auth(;|$)", current, re.IGNORECASE)
+    assert re.search(r"path=/(;|$)", legacy, re.IGNORECASE)
+
+
+def test_fetch_userinfo_requires_verified_email(monkeypatch):
+    payload = {"sub": "s", "email": "ada@example.com"}
+    monkeypatch.setattr(oauth.httpx, "get", lambda *a, **k: FakeResponse(200, payload))
+    with pytest.raises(oauth.OAuthError):
+        oauth.fetch_userinfo("token")
+
+    payload["email_verified"] = False
+    with pytest.raises(oauth.OAuthError):
+        oauth.fetch_userinfo("token")
+
+    payload["email_verified"] = True
+    assert oauth.fetch_userinfo("token") == {"sub": "s", "email": "ada@example.com"}
+
+
+def test_fetch_userinfo_rejects_google_errors(monkeypatch):
+    monkeypatch.setattr(oauth.httpx, "get", lambda *a, **k: FakeResponse(401, {}))
+    with pytest.raises(oauth.OAuthError):
+        oauth.fetch_userinfo("token")
 
 
 def test_oauth_user_cannot_change_password(client, google_settings, monkeypatch):
