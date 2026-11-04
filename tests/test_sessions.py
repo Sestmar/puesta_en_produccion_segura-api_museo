@@ -70,6 +70,42 @@ def test_logout_revokes_refresh_token(client, admin_headers):
     )
 
 
+def _assert_refresh_cookie_cleared(r):
+    assert r.status_code == 204
+    cleared = [
+        h
+        for h in r.headers.get_list("set-cookie")
+        if h.startswith("refresh_token=") and "Path=/auth" in h
+    ]
+    assert cleared, r.headers.get_list("set-cookie")
+    assert "Max-Age=0" in cleared[0]
+
+
+def test_logout_clears_refresh_cookie(client, admin_headers):
+    r = login(client, "admin", "AdminPass123")
+    r = client.post("/auth/logout", cookies={"refresh_token": refresh_cookie(r)})
+    _assert_refresh_cookie_cleared(r)
+
+
+def test_password_change_clears_refresh_cookie(client, admin_headers):
+    r = client.put(
+        "/auth/password",
+        headers=admin_headers,
+        json={"current_password": "AdminPass123", "new_password": "NewAdminPass456"},
+    )
+    _assert_refresh_cookie_cleared(r)
+
+
+def test_revoke_all_sessions_clears_refresh_cookie(client, admin_headers):
+    r = client.delete("/auth/sessions", headers=admin_headers)
+    _assert_refresh_cookie_cleared(r)
+
+
+def test_logout_without_cookie_returns_204(client):
+    r = client.post("/auth/logout")
+    assert r.status_code == 204
+
+
 def test_list_sessions_requires_auth(client):
     assert client.get("/auth/sessions").status_code == 401
 

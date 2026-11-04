@@ -260,25 +260,30 @@ def refresh(
     return {"access_token": access_token, "token_type": "bearer"}
 
 
+def _no_content_clearing_refresh_cookie() -> Response:
+    # Clear the cookie on the returned Response itself: FastAPI drops headers set on
+    # an injected ``response`` parameter when the endpoint returns its own Response.
+    result = Response(status_code=status.HTTP_204_NO_CONTENT)
+    clear_refresh_cookie(result)
+    return result
+
+
 @router.post("/logout", status_code=status.HTTP_204_NO_CONTENT)
 def logout(
     request: Request,
-    response: Response,
     db: Annotated[Session, Depends(get_db)],
 ):
     raw_token = get_refresh_cookie(request)
-    if raw_token is not None:
-        session = find_by_token(db, raw_token)
-        if session is not None:
-            revoke(db, session)
-    clear_refresh_cookie(response)
+    session = find_by_token(db, raw_token) if raw_token is not None else None
+    if session is not None:
+        revoke(db, session)
     record_event(
         db,
         action=AuditAction.LOGOUT,
         actor=session.user.username if session is not None else None,
         request=request,
     )
-    return Response(status_code=status.HTTP_204_NO_CONTENT)
+    return _no_content_clearing_refresh_cookie()
 
 
 @router.put("/password", status_code=status.HTTP_204_NO_CONTENT)
@@ -286,7 +291,6 @@ def change_password(
     payload: PasswordChange,
     current_user: Annotated[User, Depends(get_current_user)],
     request: Request,
-    response: Response,
     db: Annotated[Session, Depends(get_db)],
 ):
     if current_user.hashed_password is None:
@@ -306,7 +310,6 @@ def change_password(
         )
     current_user.hashed_password = hash_password(payload.new_password)
     revoke_all_for_user(db, current_user.id)
-    clear_refresh_cookie(response)
     record_event(
         db,
         action=AuditAction.PASSWORD_CHANGED,
@@ -315,18 +318,16 @@ def change_password(
         resource_id=current_user.id,
         request=request,
     )
-    return Response(status_code=status.HTTP_204_NO_CONTENT)
+    return _no_content_clearing_refresh_cookie()
 
 
 @router.delete("/sessions", status_code=status.HTTP_204_NO_CONTENT)
 def revoke_all_sessions(
     current_user: Annotated[User, Depends(get_current_user)],
     request: Request,
-    response: Response,
     db: Annotated[Session, Depends(get_db)],
 ):
     revoke_all_for_user(db, current_user.id)
-    clear_refresh_cookie(response)
     record_event(
         db,
         action=AuditAction.SESSION_REVOKED_ALL,
@@ -335,7 +336,7 @@ def revoke_all_sessions(
         resource_id=current_user.id,
         request=request,
     )
-    return Response(status_code=status.HTTP_204_NO_CONTENT)
+    return _no_content_clearing_refresh_cookie()
 
 
 @router.get("/sessions", response_model=list[SessionOut])
