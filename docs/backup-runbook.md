@@ -145,8 +145,6 @@ comando:
   `docker exec <contenedor_api> cat /app/audit_anchor/anchor.log > anchor_<STAMP>.log`.
 - Guardar los dos archivos juntos y fuera de la VPS.
 
-Detalles del despliegue en `despliegue-vps.md`.
-
 ## Limitaciones conocidas
 
 - `pg_dump` es un respaldo **lógico**: captura el estado en el momento del
