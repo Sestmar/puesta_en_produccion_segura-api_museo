@@ -1,107 +1,159 @@
 # Runbook de respaldo y restauración
 
-Backup lógico de PostgreSQL para la API del museo. Todos los comandos de este
-documento fueron probados contra `postgres:16-alpine` (ciclo completo
-dump → pérdida simulada → restore → verificación de datos).
+Backup lógico de PostgreSQL y del ancla de auditoría para la API del museo.
+Los comandos usan los servicios de `docker-compose.yml` (`db` con
+`postgres:17-alpine` y `api`) y se ejecutan desde la raíz del repositorio.
+Para el despliegue en la VPS con Dokploy, ver la sección
+[Producción (Dokploy)](#producción-dokploy).
+
+El ciclo completo de este documento (respaldo → cambios posteriores →
+restauración → `GET /audit/verify` con `valid: true`, y `valid: false` con un
+ancla de otro momento) se probó en un proyecto compose aislado.
+
+> **Git Bash en Windows** convierte las rutas que empiezan por `/` (por ejemplo
+> `/app/audit_anchor/anchor.log` pasa a `C:/Program Files/Git/app/...`). Hay
+> que anteponer `MSYS_NO_PATHCONV=1` a los comandos `docker compose` que
+> llevan rutas del contenedor.
 
 ## Qué se respalda
 
-| Recurso | ¿Se respalda? | Cómo |
-| --- | --- | --- |
-| Base de datos PostgreSQL | Sí | `pg_dump` (formato `custom`) |
-| Archivo de ancla de auditoría (`audit_anchor.log`) | Sí | copia del volumen `auditanchor` |
-| `SECRET_KEY` y credenciales (`.env`) | Sí | copia cifrada fuera del repositorio |
-| Redis (rate limiting) | No | es caché/ephemeral; perderlo solo resetea límites |
+| Recurso | ¿Se respalda? | Dónde vive | Cómo |
+| --- | --- | --- | --- |
+| Base de datos PostgreSQL | Sí | contenedor `db`, volumen `pgdata` | `pg_dump` (formato `custom`) |
+| Ancla de auditoría (`anchor.log`) | Sí | contenedor `api`, volumen `auditanchor` en `/app/audit_anchor` | `cat` del archivo |
+| `SECRET_KEY` y credenciales (`.env`) | Sí | host | copia cifrada fuera del repositorio |
+| Redis (rate limiting) | No | contenedor `redis` | es efímero; perderlo solo reinicia los límites |
 
-> **Restaurar siempre base + ancla del mismo punto en el tiempo.** El ancla
-> externo firma la cabecera de la cadena de auditoría. Si restaurás la base y
-> no el ancla (o viceversa), `GET /audit/verify` reportará una violación. Eso
-> es una *característica* (detección de manipulación), no un bug: para una
-> restauración legítima hay que restablecer ambos artefactos juntos.
+> **Restaurar siempre la base y el ancla del mismo punto en el tiempo.** El
+> ancla externa firma la cabecera de la cadena de auditoría. Si se restaura la
+> base sin el ancla (o al revés), `GET /audit/verify` informará de una
+> violación. Es la detección de manipulación funcionando, no un fallo: en una
+> restauración legítima hay que restablecer los dos artefactos juntos.
+>
+> **`SECRET_KEY` también firma la cadena.** Restaurar con una clave distinta
+> invalida la verificación de las entradas antiguas.
 
 ## Respaldo
 
-El servicio de la base se llama `db` en `docker-compose.yml`.
+Los dos archivos se escriben en `./backups/` del host. `pg_dump` vuelca por
+la salida estándar porque el contenedor `db` no tiene ese directorio montado.
 
 ```bash
-# 1. Volcado lógico de la base a un archivo custom en el host
-docker compose exec -T db pg_dump -U "$POSTGRES_USER" -d "$POSTGRES_DB" \
-  --format=custom -f /backups/museum_$(date +%F_%H%M).dump
+mkdir -p backups
+STAMP=$(date +%F_%H%M)
 
-# 2. Ancla de auditoría (mismo directorio de respaldo)
-docker cp "$(docker compose ps -q db)":/app/audit_anchor/anchor.log /backups/
+# 1. Volcado lógico de la base (formato custom, comprimido)
+docker compose exec -T db sh -c 'pg_dump -U "$POSTGRES_USER" -d "$POSTGRES_DB" --format=custom' \
+  > "backups/museum_$STAMP.dump"
+
+# 2. Ancla de auditoría del mismo momento (vive en el contenedor api)
+docker compose exec -T api cat /app/audit_anchor/anchor.log \
+  > "backups/anchor_$STAMP.log"
 
 # 3. Credenciales, si no están ya en un gestor de secretos
-#    (nunca dentro del repositorio)
-cp .env /backups/.env
+#    (nunca dentro del repositorio; cifrar la copia)
+cp .env "backups/env_$STAMP"
 ```
 
-Alternativa manual sin compose (contra un Postgres expuesto):
+`$POSTGRES_USER` y `$POSTGRES_DB` van entre comillas simples para que se
+expandan dentro del contenedor, donde ya están definidas.
+
+Para que base y ancla correspondan al mismo instante, conviene hacer el
+respaldo con poca actividad o parar la API mientras dura
+(`docker compose stop api` / `docker compose start api`). En ese caso el paso 2
+se hace con `docker compose run --rm --no-deps -T api cat ...`, porque `exec`
+necesita el contenedor en marcha.
+
+Alternativa sin compose (contra un Postgres accesible por red):
 
 ```bash
-PGPASSWORD="$POSTGRES_PASSWORD" pg_dump -h localhost -U "$POSTGRES_USER" \
-  -d "$POSTGRES_DB" --format=custom -f museum_$(date +%F_%H%M).dump
+PGPASSWORD="$POSTGRES_PASSWORD" pg_dump -h <host> -U "$POSTGRES_USER" \
+  -d "$POSTGRES_DB" --format=custom -f "museum_$(date +%F_%H%M).dump"
 ```
 
-El formato `custom` es comprimido, restaurable parcialmente y acepta
-`--jobs` para acelar la restauración.
+El formato `custom` va comprimido, permite restaurar solo una parte y acepta
+`--jobs` para acelerar la restauración.
 
 ## Programación y rotación (ejemplo)
 
-- **Frecuencia**: diario (→ RPO máximo de 24 h). Para un RPO menor hacé
-  dumps cada hora y/o archivado WAL continuo.
-- **Retención**: 14 dumps diarios + 1 semanal de los últimos 8 + 1 mensual.
-- **Windows** (Task Scheduler):
+- **Frecuencia**: diaria (RPO máximo de 24 h). Para un RPO menor, dumps cada
+  hora o archivado WAL continuo.
+- **Retención**: 14 dumps diarios, más 1 semanal de las últimas 8 semanas y
+  1 mensual.
+- **Linux**: cron `0 2 * * * /usr/local/bin/museum-backup.sh`, que ejecuta los
+  pasos de la sección anterior.
+- **Windows** (Programador de tareas):
   ```
   schtasks /create /tn museum-backup /sc daily /st 02:00 /tr "C:\scripts\museum-backup.ps1"
   ```
-- **Linux**: cron `0 2 * * * /usr/local/bin/museum-backup.sh`.
 
 ## Restauración
 
 ```bash
-# 1. (Opcional) parar la API para evitar escrituras durante el restore
+# 1. Parar la API para que no haya escrituras durante el restore
 docker compose stop api
 
 # 2. Recrear la base vacía
-docker compose exec -T db psql -U "$POSTGRES_USER" -d postgres \
-  -c "DROP DATABASE IF EXISTS $POSTGRES_DB WITH (FORCE);"
-docker compose exec -T db psql -U "$POSTGRES_USER" -d postgres \
-  -c "CREATE DATABASE $POSTGRES_DB OWNER $POSTGRES_USER;"
+docker compose exec -T db sh -c 'psql -U "$POSTGRES_USER" -d postgres \
+  -c "DROP DATABASE IF EXISTS \"$POSTGRES_DB\" WITH (FORCE);"'
+docker compose exec -T db sh -c 'psql -U "$POSTGRES_USER" -d postgres \
+  -c "CREATE DATABASE \"$POSTGRES_DB\" OWNER \"$POSTGRES_USER\";"'
 
-# 3. Cargar el dump
-docker compose exec -T db pg_restore -U "$POSTGRES_USER" -d "$POSTGRES_DB" \
-  --no-owner --no-privileges /backups/museum_MMMMDDHH.dump
+# 3. Cargar el dump por la entrada estándar
+docker compose exec -T db sh -c 'pg_restore -U "$POSTGRES_USER" -d "$POSTGRES_DB" --no-owner --no-privileges' \
+  < backups/museum_<STAMP>.dump
 
-# 4. Restaurar el ancla de auditoría del MISMO respaldo
-docker cp /backups/anchor.log "$(docker compose ps -q db)":/app/audit_anchor/anchor.log
+# 4. Restaurar el ancla del MISMO respaldo, sin arrancar el servidor.
+#    `run` levanta un contenedor efímero de la imagen api con el volumen
+#    montado y como appuser, así el archivo queda con el dueño correcto.
+docker compose run --rm --no-deps -T api sh -c 'cat > /app/audit_anchor/anchor.log' \
+  < backups/anchor_<STAMP>.log
 
-# 5. Arrancar y verificar
-docker compose up -d
-curl -s http://localhost:8000/health/ready
+# 5. Arrancar y comprobar
+docker compose start api
+curl -s http://localhost:8001/health/ready
 ```
+
+No usar `docker cp` para el ancla: crea el archivo con dueño `root` y la API,
+que corre como `appuser`, no podría escribir en él (`PermissionError`).
 
 ## Verificación (obligatoria tras cada restore)
 
 ```bash
-# Contar registros esperados
-curl -s -H "Authorization: Bearer <admin-token>" http://localhost:8000/audit?limit=1
+# Comprobar que hay registros de auditoría
+curl -s -H "Authorization: Bearer <admin-token>" "http://localhost:8001/audit?limit=1"
 
-# La cadena de auditoría debe dar VÁLIDA
-curl -s -H "Authorization: Bearer <admin-token>" http://localhost:8000/audit/verify
+# La cadena de auditoría debe ser válida
+curl -s -H "Authorization: Bearer <admin-token>" http://localhost:8001/audit/verify
 # -> {"valid": true, ...}
 ```
 
 Si `verify` responde `valid: false`, la restauración es inconsistente
-(probablemente ancla o checkpoint de otro punto temporal). No la pongas en
-producción sin resolver la inconsistencia.
+(probablemente el ancla o el checkpoint son de otro momento, o cambió
+`SECRET_KEY`). No se pone en producción hasta resolverlo.
 
-## Limitaciones conocidas (honestas)
+## Producción (Dokploy)
 
-- El `pg_dump` es un respaldo **lógico**: captura el estado al momento del dump
-  (RPO = cadencia, no cero). Recovery a punto en el tiempo (PITR) requiere
-  archivado WAL continuo + `pg_basebackup`, que es una mejora futura.
+En la VPS no hay compose: la base es un servicio PostgreSQL gestionado por
+Dokploy y la API una Application con el volumen del ancla montado en
+`/app/audit_anchor`. Los pasos son los mismos, cambiando el destino de cada
+comando:
+
+- **Base**: usar los backups programados de Dokploy (destino S3) o `pg_dump`
+  contra el contenedor de la base desde la VPS.
+- **Ancla**: se lee del contenedor de la API, no del de la base:
+  `docker exec <contenedor_api> cat /app/audit_anchor/anchor.log > anchor_<STAMP>.log`.
+- Guardar los dos archivos juntos y fuera de la VPS.
+
+Detalles del despliegue en `despliegue-vps.md`.
+
+## Limitaciones conocidas
+
+- `pg_dump` es un respaldo **lógico**: captura el estado en el momento del
+  volcado (el RPO es la cadencia, no cero). La recuperación a un punto en el
+  tiempo (PITR) necesita archivado WAL continuo y `pg_basebackup`; queda como
+  mejora futura.
 - Restaurar sin el ancla rompe `GET /audit/verify` por diseño. Guardar ambos
-  juntos es parte del procedimiento, no opcional.
-- El respaldo contiene datos personales (credenciales hash, IPs en auditoría):
-  cifrar los archivos de backup y restringir el acceso.
+  juntos es parte del procedimiento.
+- El respaldo contiene datos personales (hashes de contraseñas, IPs en la
+  auditoría): cifrar los archivos y restringir el acceso.
