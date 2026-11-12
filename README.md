@@ -2,6 +2,22 @@
 
 API REST para un catálogo de museo construida con FastAPI, diseñada siguiendo buenas prácticas de seguridad (autenticación JWT, control de acceso basado en roles, limitación de tasa y validación estricta de entradas).
 
+## Despliegue en producción
+
+La aplicación está desplegada en un VPS propio (OVHcloud) con [Dokploy](https://dokploy.com), que construye las imágenes Docker desde este repositorio y publica los servicios por HTTPS con certificados de Let's Encrypt:
+
+| Servicio | URL |
+| --- | --- |
+| Frontend (SPA React) | https://museo.37.187.219.34.sslip.io |
+| API (FastAPI) | https://museo-api.37.187.219.34.sslip.io |
+| Comprobación de salud | https://museo-api.37.187.219.34.sslip.io/health |
+
+- La base de datos es PostgreSQL y Redis comparte el límite de tasa entre workers, ambos en la red interna del VPS sin exponerse a Internet.
+- Con `ENVIRONMENT=production`, `/docs` y `/openapi.json` responden 404.
+- Las copias de seguridad y su restauración están documentadas en [docs/backup-runbook.md](docs/backup-runbook.md).
+
+El presupuesto comparativo de despliegue en AWS, Azure, Google Cloud y Render está en [docs/presupuesto.md](docs/presupuesto.md).
+
 ## Requisitos de la práctica
 
 Cómo cumple el proyecto cada requisito de la aplicación distribuida:
