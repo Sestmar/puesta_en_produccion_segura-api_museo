@@ -13,6 +13,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { isApiError } from "@/lib/api/client";
 import { authApi } from "@/lib/api/endpoints";
 import { imageForSeed } from "@/lib/images";
+import { CatalogImage } from "@/components/common/CatalogImage";
 import { PASSWORD_HINT, USERNAME_HINT, passwordSchema, usernameSchema } from "@/lib/validation";
 
 const schema = z
@@ -84,7 +85,7 @@ export function RegisterPage() {
     <div className="grid min-h-[calc(100dvh-6rem)] lg:grid-cols-2">
       {/* Panel de marca */}
       <div className="relative hidden overflow-hidden lg:block">
-        <img
+        <CatalogImage
           src={imageForSeed("museo-registro", 1400)}
           alt=""
           className="size-full object-cover"

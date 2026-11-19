@@ -2,13 +2,14 @@ import { Link } from "react-router-dom";
 
 import { formatLifespan } from "@/lib/format";
 import { imageForArtist } from "@/lib/images";
+import { CatalogImage } from "@/components/common/CatalogImage";
 import type { Artist } from "@/lib/api/types";
 
 export function ArtistCard({ artist }: { artist: Artist }) {
   return (
     <Link to={`/artistas/${artist.id}`} className="group flex flex-col gap-3">
       <div className="hover-lift relative aspect-square overflow-hidden rounded-card bg-ink-800">
-        <img
+        <CatalogImage
           src={imageForArtist(artist, 600)}
           alt={artist.name}
           loading="lazy"

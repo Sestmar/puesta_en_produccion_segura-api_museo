@@ -17,6 +17,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { useArtist, useArtwork, useArtworks, useRoom } from "@/hooks/queries";
 import { formatLifespan, formatYear } from "@/lib/format";
 import { imageForArtwork, sourceWorkByTitle } from "@/lib/images";
+import { CatalogImage } from "@/components/common/CatalogImage";
 
 function DetailRow({
   icon,
@@ -96,7 +97,7 @@ export function ArtworkDetailPage() {
       <div className="mt-8 grid gap-10 lg:grid-cols-[1.05fr_0.95fr] lg:gap-14">
         <div className="lg:sticky lg:top-24 lg:self-start">
           <div className="overflow-hidden rounded-card border border-ink-700 bg-ink-900">
-            <img
+            <CatalogImage
               src={imageForArtwork(artwork, 1400)}
               alt={artwork.title}
               className="max-h-[75dvh] w-full object-contain"

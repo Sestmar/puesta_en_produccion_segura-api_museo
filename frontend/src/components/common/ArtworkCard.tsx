@@ -3,6 +3,7 @@ import { Link } from "react-router-dom";
 import { FavoriteButton } from "@/components/common/FavoriteButton";
 import { formatYear } from "@/lib/format";
 import { imageForArtwork } from "@/lib/images";
+import { CatalogImage } from "@/components/common/CatalogImage";
 import type { Artwork } from "@/lib/api/types";
 
 export function ArtworkCard({ artwork }: { artwork: Artwork }) {
@@ -11,7 +12,7 @@ export function ArtworkCard({ artwork }: { artwork: Artwork }) {
     <div className="group relative flex flex-col">
       <Link to={`/obras/${artwork.id}`} className="flex flex-col">
         <div className="hover-lift relative aspect-4/5 overflow-hidden rounded-card bg-ink-800">
-          <img
+          <CatalogImage
             src={imageForArtwork(artwork, 800)}
             alt={artwork.title}
             loading="lazy"

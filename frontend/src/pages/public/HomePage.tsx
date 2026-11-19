@@ -11,6 +11,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { useArtists, useArtworks, useRooms } from "@/hooks/queries";
 import { formatNumber } from "@/lib/format";
 import { imageForArtwork, imageForSeed } from "@/lib/images";
+import { CatalogImage } from "@/components/common/CatalogImage";
 
 const SLIDE_INTERVAL_MS = 4500;
 const SLIDE_COUNT = 6;
@@ -62,7 +63,7 @@ function HeroSlideshow({ artworks }: { artworks: { id: number; title: string }[]
 
   if (slides.length === 0) {
     return (
-      <img
+      <CatalogImage
         src={imageForSeed("museo-hero", 1600)}
         alt="Obra destacada del museo"
         className="absolute inset-0 size-full object-cover"
@@ -79,7 +80,7 @@ function HeroSlideshow({ artworks }: { artworks: { id: number; title: string }[]
       {slides.map((artwork, index) => {
         const isActive = index === current;
         return (
-          <img
+          <CatalogImage
             key={artwork.id}
             src={imageForArtwork(artwork, 1600)}
             alt={artwork.title}
