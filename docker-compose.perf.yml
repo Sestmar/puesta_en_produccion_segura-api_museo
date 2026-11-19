@@ -1,0 +1,36 @@
+# Override para las pruebas funcionales y de estrés en local con la misma
+# configuración que producción: API sin --reload y con ENVIRONMENT=production,
+# frontend compilado y servido por nginx con sus cabeceras de seguridad, y
+# límites de tasa guardados en Redis.
+#
+# Uso:
+#   docker compose -f docker-compose.yml -f docker-compose.perf.yml up --build -d
+#
+# Diferencias que quedan con producción (y que la comparativa debe tener en
+# cuenta): no hay HTTPS ni proxy inverso (Traefik) delante y todo corre en la
+# misma máquina que lanza la carga.
+services:
+  api:
+    environment:
+      ENVIRONMENT: production
+      FORCE_HTTPS: "false"
+      REFRESH_COOKIE_SECURE: "false"
+      UVICORN_WORKERS: ${UVICORN_WORKERS:-1}
+      # Igual que producción. Solo el escenario L2b («capacidad bruta») lo
+      # relaja, p. ej. DEFAULT_RATE_LIMIT="1000000 per minute".
+      DEFAULT_RATE_LIMIT: ${DEFAULT_RATE_LIMIT:-100 per minute}
+    # Sin montar el código: se usa la imagen tal cual, como en producción.
+    volumes: !override
+      - auditanchor:/app/audit_anchor
+    command: !reset null
+
+  frontend:
+    build:
+      context: ./frontend
+      target: prod
+      args:
+        VITE_API_URL: ${VITE_API_URL:-http://localhost:8001}
+    ports: !override
+      - "5173:8080"
+    volumes: !reset []
+    environment: !reset {}

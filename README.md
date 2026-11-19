@@ -18,6 +18,8 @@ La aplicación está desplegada en un VPS propio (OVHcloud) con [Dokploy](https:
 
 El presupuesto comparativo de despliegue en AWS, Azure, Google Cloud y Render está en [docs/presupuesto.md](docs/presupuesto.md).
 
+Las pruebas funcionales (Selenium) y de estrés (Selenium y Locust), ejecutadas en local y en producción con su comparativa, están documentadas en [docs/pruebas/](docs/pruebas/README.md).
+
 ## Requisitos de la práctica
 
 Cómo cumple el proyecto cada requisito de la aplicación distribuida:
@@ -168,6 +170,8 @@ pytest
 ```
 
 Las pruebas corren contra SQLite y dejan la suite completa en verde (256 tests). `pytest` aplica además el umbral de cobertura de ramas (mínimo 90 %).
+
+Las pruebas funcionales y de estrés contra la aplicación desplegada están en `tests_e2e/` y se lanzan aparte (ver [docs/pruebas/04-ejecucion.md](docs/pruebas/04-ejecucion.md)).
 
 ## Calidad del código
 

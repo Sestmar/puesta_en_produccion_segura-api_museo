@@ -10,3 +10,7 @@ audit_anchor.log
 audit_anchor/
 .idea/
 .vscode/
+
+# Pruebas E2E y de estrés: credenciales de prueba y resultados en bruto
+tests_e2e/.env.*
+tests_e2e/results/
