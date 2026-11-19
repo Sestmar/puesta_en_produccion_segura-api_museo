@@ -146,6 +146,14 @@ def open_account_menu(driver: WebDriver, username: str) -> None:
     wait(driver).until(EC.element_to_be_clickable(header_user_button(username))).click()
 
 
+OPEN_TOAST = (By.CSS_SELECTOR, "li[data-swipe-direction][data-state='open']")
+
+
+def wait_toasts_gone(driver: WebDriver, timeout: float = DEFAULT_TIMEOUT) -> None:
+    """Espera a que se cierren los avisos (toasts), que pueden tapar botones."""
+    wait(driver, timeout).until(EC.invisibility_of_element_located(OPEN_TOAST))
+
+
 def click_menu_item(driver: WebDriver, text: str) -> None:
     locator = (
         By.XPATH,

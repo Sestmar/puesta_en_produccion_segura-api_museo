@@ -6,7 +6,14 @@ import pytest
 from selenium.webdriver.common.by import By
 from selenium.webdriver.support import expected_conditions as EC
 
-from tests_e2e.browser import click_menu_item, spa_navigate, wait, wait_heading, xpath_literal
+from tests_e2e.browser import (
+    click_menu_item,
+    spa_navigate,
+    wait,
+    wait_heading,
+    wait_toasts_gone,
+    xpath_literal,
+)
 
 pytestmark = pytest.mark.admin
 
@@ -17,6 +24,8 @@ def _row(name: str) -> tuple[str, str]:
 
 def _open_row_menu(driver, name: str) -> None:
     row = wait(driver).until(EC.visibility_of_element_located(_row(name)))
+    # El aviso de "sala creada/actualizada" cae encima de la última fila.
+    wait_toasts_gone(driver)
     row.find_element(By.XPATH, ".//button[@aria-label='Acciones de la fila']").click()
 
 

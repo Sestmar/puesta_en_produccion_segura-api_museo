@@ -118,8 +118,14 @@ def test_refresh_cookie_flags(cfg):
         time.sleep(61)
         response = requests.post(cfg.api_url + "/auth/login", data=data, timeout=TIMEOUT)
     assert response.status_code == 200, response.text
+    # El login también borra la cookie antigua de Path=/ (Max-Age=0): se busca
+    # la que realmente fija el refresh token.
     cookie = next(
-        v for k, v in response.raw.headers.items() if k.lower() == "set-cookie" and "refresh" in v
+        v
+        for k, v in response.raw.headers.items()
+        if k.lower() == "set-cookie"
+        and v.startswith("refresh_token=")
+        and "max-age=0" not in v.lower()
     )
     lowered = cookie.lower()
     assert "httponly" in lowered
