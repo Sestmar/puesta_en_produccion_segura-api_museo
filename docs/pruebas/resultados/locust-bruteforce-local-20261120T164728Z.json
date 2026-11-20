@@ -1,0 +1,9 @@
+{
+  "objetivo": "local",
+  "victima": "loadtest-10",
+  "respuestas": {
+    "401": 5,
+    "429": 940
+  },
+  "login_con_password_correcta_tras_ataque": 200
+}

@@ -1,0 +1,143 @@
+{
+  "objetivo": "prod",
+  "base_url": "https://museo.37.187.219.34.sslip.io",
+  "fecha_utc": "20261120T185808Z",
+  "recorridos_por_navegador": 3,
+  "escalones": {
+    "1": {
+      "navegadores": 1,
+      "duracion_s": 12.4,
+      "paginas_cargadas": 15,
+      "paginas_por_segundo": 1.21,
+      "errores": 0,
+      "tasa_error_pct": 0.0,
+      "media_s": 0.559,
+      "p50_s": 0.696,
+      "p95_s": 0.769,
+      "max_s": 1.523,
+      "tipos_error": {},
+      "por_pagina": {
+        "artistas": {
+          "muestras": 3,
+          "errores": 0,
+          "p50_s": 0.258,
+          "p95_s": 0.259
+        },
+        "detalle": {
+          "muestras": 3,
+          "errores": 0,
+          "p50_s": 0.752,
+          "p95_s": 0.761
+        },
+        "obras": {
+          "muestras": 3,
+          "errores": 0,
+          "p50_s": 0.696,
+          "p95_s": 0.769
+        },
+        "portada": {
+          "muestras": 3,
+          "errores": 0,
+          "p50_s": 0.734,
+          "p95_s": 1.523
+        },
+        "salas": {
+          "muestras": 3,
+          "errores": 0,
+          "p50_s": 0.226,
+          "p95_s": 0.262
+        }
+      }
+    },
+    "5": {
+      "navegadores": 5,
+      "duracion_s": 36.4,
+      "paginas_cargadas": 75,
+      "paginas_por_segundo": 2.06,
+      "errores": 0,
+      "tasa_error_pct": 0.0,
+      "media_s": 1.792,
+      "p50_s": 1.42,
+      "p95_s": 3.367,
+      "max_s": 6.275,
+      "tipos_error": {},
+      "por_pagina": {
+        "artistas": {
+          "muestras": 15,
+          "errores": 0,
+          "p50_s": 1.019,
+          "p95_s": 2.316
+        },
+        "detalle": {
+          "muestras": 15,
+          "errores": 0,
+          "p50_s": 3.175,
+          "p95_s": 4.082
+        },
+        "obras": {
+          "muestras": 15,
+          "errores": 0,
+          "p50_s": 1.349,
+          "p95_s": 1.983
+        },
+        "portada": {
+          "muestras": 15,
+          "errores": 0,
+          "p50_s": 1.376,
+          "p95_s": 2.732
+        },
+        "salas": {
+          "muestras": 15,
+          "errores": 0,
+          "p50_s": 1.125,
+          "p95_s": 3.287
+        }
+      }
+    },
+    "10": {
+      "navegadores": 10,
+      "duracion_s": 80.5,
+      "paginas_cargadas": 150,
+      "paginas_por_segundo": 1.86,
+      "errores": 0,
+      "tasa_error_pct": 0.0,
+      "media_s": 4.109,
+      "p50_s": 2.999,
+      "p95_s": 10.981,
+      "max_s": 25.316,
+      "tipos_error": {},
+      "por_pagina": {
+        "artistas": {
+          "muestras": 30,
+          "errores": 0,
+          "p50_s": 2.33,
+          "p95_s": 4.433
+        },
+        "detalle": {
+          "muestras": 30,
+          "errores": 0,
+          "p50_s": 6.433,
+          "p95_s": 13.288
+        },
+        "obras": {
+          "muestras": 30,
+          "errores": 0,
+          "p50_s": 2.916,
+          "p95_s": 6.499
+        },
+        "portada": {
+          "muestras": 30,
+          "errores": 0,
+          "p50_s": 3.037,
+          "p95_s": 10.608
+        },
+        "salas": {
+          "muestras": 30,
+          "errores": 0,
+          "p50_s": 2.439,
+          "p95_s": 6.952
+        }
+      }
+    }
+  }
+}

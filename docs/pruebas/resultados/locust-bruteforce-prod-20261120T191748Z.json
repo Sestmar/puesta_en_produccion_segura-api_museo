@@ -1,0 +1,9 @@
+{
+  "objetivo": "prod",
+  "victima": "loadtest-09",
+  "respuestas": {
+    "401": 5,
+    "429": 759
+  },
+  "login_con_password_correcta_tras_ataque": 401
+}
