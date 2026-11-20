@@ -3,7 +3,7 @@ from typing import Annotated
 
 from fastapi import APIRouter, Depends, HTTPException, Request, Response, status
 from fastapi.security import OAuth2PasswordRequestForm
-from sqlalchemy import func, select
+from sqlalchemy import func, select, update
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
@@ -153,10 +153,23 @@ def login(
     )
     if user is None or not password_ok:
         if user is not None:
-            user.failed_login_attempts += 1
-            if user.failed_login_attempts >= settings.max_failed_attempts:
-                user.locked_until = _utcnow() + timedelta(
-                    minutes=settings.lockout_minutes
+            # Atomic increment in the database: a read-modify-write in Python loses
+            # updates when failed logins arrive concurrently, so the account never
+            # reaches the lockout threshold (brute force bypass).
+            attempts = db.execute(
+                update(User)
+                .where(User.id == user.id)
+                .values(failed_login_attempts=User.failed_login_attempts + 1)
+                .returning(User.failed_login_attempts)
+            ).scalar_one()
+            if attempts >= settings.max_failed_attempts:
+                db.execute(
+                    update(User)
+                    .where(User.id == user.id)
+                    .values(
+                        locked_until=_utcnow()
+                        + timedelta(minutes=settings.lockout_minutes)
+                    )
                 )
             db.commit()
             record_event(
@@ -166,7 +179,7 @@ def login(
                 details={"username": user.username},
                 request=request,
             )
-            if user.locked_until is not None:
+            if attempts >= settings.max_failed_attempts:
                 record_event(
                     db,
                     action=AuditAction.LOGIN_LOCKED,

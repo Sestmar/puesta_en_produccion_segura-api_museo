@@ -2,13 +2,14 @@ import { ArrowUpRight } from "@phosphor-icons/react";
 import { Link } from "react-router-dom";
 
 import { imageForRoom } from "@/lib/images";
+import { CatalogImage } from "@/components/common/CatalogImage";
 import type { Room } from "@/lib/api/types";
 
 export function RoomCard({ room }: { room: Room }) {
   return (
     <Link to={`/salas/${room.id}`} className="group relative flex flex-col overflow-hidden rounded-card border border-ink-700 hover-lift">
       <div className="relative aspect-16/10 overflow-hidden bg-ink-800">
-        <img
+        <CatalogImage
           src={imageForRoom(room, 900)}
           alt={room.name}
           loading="lazy"

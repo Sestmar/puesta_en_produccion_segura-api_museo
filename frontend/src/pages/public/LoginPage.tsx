@@ -14,6 +14,7 @@ import { useGoogleLoginEnabled } from "@/hooks/queries";
 import { isApiError } from "@/lib/api/client";
 import { GOOGLE_LOGIN_URL } from "@/lib/env";
 import { imageForSeed } from "@/lib/images";
+import { CatalogImage } from "@/components/common/CatalogImage";
 
 const schema = z.object({
   username: z.string().trim().min(3, "Ingresa al menos 3 caracteres"),
@@ -87,7 +88,7 @@ export function LoginPage() {
     <div className="grid min-h-[calc(100dvh-6rem)] lg:grid-cols-2">
       {/* Panel de marca */}
       <div className="relative hidden overflow-hidden lg:block">
-        <img
+        <CatalogImage
           src={imageForSeed("museo-login", 1400)}
           alt=""
           className="size-full object-cover"

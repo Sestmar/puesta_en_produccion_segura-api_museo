@@ -7,6 +7,7 @@ import { Badge } from "@/components/ui/badge";
 import { EmptyState } from "@/components/ui/empty-state";
 import { Skeleton } from "@/components/ui/skeleton";
 import { imageForRoom } from "@/lib/images";
+import { CatalogImage } from "@/components/common/CatalogImage";
 import { useArtworks, useRoom } from "@/hooks/queries";
 
 export function RoomDetailPage() {
@@ -51,7 +52,7 @@ export function RoomDetailPage() {
 
       <header className="relative mt-8 overflow-hidden rounded-card border border-ink-700">
         <div className="relative aspect-21/9 max-h-[420px] w-full">
-          <img src={imageForRoom(room, 1600)} alt={room.name} className="size-full object-cover" />
+          <CatalogImage src={imageForRoom(room, 1600)} alt={room.name} className="size-full object-cover" />
           <div className="absolute inset-0 bg-linear-to-t from-ink-950 via-ink-950/40 to-transparent" />
         </div>
         <div className="absolute inset-x-0 bottom-0 flex flex-col gap-3 p-6 sm:p-10">

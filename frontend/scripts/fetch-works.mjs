@@ -2,12 +2,13 @@
  * Genera src/data/works.ts con obras de dominio público del Art Institute of
  * Chicago (API abierta, sin clave) y descarga sus imágenes a public/works/.
  *
- * Uso:  node scripts/fetch-works.mjs
+ * Uso:  node scripts/fetch-works.mjs                (regenera works.ts y descarga)
+ *       node scripts/fetch-works.mjs --images-only  (solo descarga las que falten)
  *
  * Las imágenes se sirven localmente para evitar que el CDN de AIC bloquee el
  * hotlinking desde localhost/producción con un Referer distinto a artic.edu.
  */
-import { mkdir, writeFile } from "node:fs/promises";
+import { mkdir, readFile, writeFile } from "node:fs/promises";
 import { existsSync } from "node:fs";
 
 const AIC_SEARCH = "https://api.artic.edu/api/v1/artworks/search";
@@ -52,27 +53,51 @@ async function downloadImage(imageId) {
     return true;
   }
 
-  const url = `${AIC_IIIF}/${imageId}/full/${DOWNLOAD_WIDTH},/0/default.jpg`;
-  try {
-    const response = await fetch(url, {
-      headers: {
-        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36",
-        Referer: "https://www.artic.edu/",
-        Origin: "https://www.artic.edu",
-      },
-    });
-    if (!response.ok) {
-      console.warn(`  ✗ ${filename}: ${response.status}`);
-      return false;
+  // No todas las imágenes se sirven a 1600 px: el CDN responde 403 a tamaños
+  // por encima del permitido. Se reintenta con el ancho recomendado por AIC
+  // (843 px) y, en último caso, con el máximo que ofrezca el servidor.
+  const sizes = [`${DOWNLOAD_WIDTH},`, "843,", "max"];
+  const failures = [];
+  for (const size of sizes) {
+    const url = `${AIC_IIIF}/${imageId}/full/${size}/0/default.jpg`;
+    try {
+      const response = await fetch(url, {
+        headers: {
+          "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36",
+          Referer: "https://www.artic.edu/",
+          Origin: "https://www.artic.edu",
+        },
+      });
+      if (!response.ok) {
+        failures.push(`${size} -> ${response.status}`);
+        continue;
+      }
+      const buffer = Buffer.from(await response.arrayBuffer());
+      await writeFile(targetPath, buffer);
+      console.log(`  ↓ ${filename} [${size}] (${(buffer.length / 1024).toFixed(1)} KB)`);
+      return true;
+    } catch (error) {
+      failures.push(`${size} -> ${error.message}`);
     }
-    const buffer = Buffer.from(await response.arrayBuffer());
-    await writeFile(targetPath, buffer);
-    console.log(`  ↓ ${filename} (${(buffer.length / 1024).toFixed(1)} KB)`);
-    return true;
-  } catch (error) {
-    console.warn(`  ✗ ${filename}: ${error.message}`);
-    return false;
   }
+  console.warn(`  ✗ ${filename}: ${failures.join("; ")}`);
+  return false;
+}
+
+// --images-only: no consulta la API ni regenera works.ts; solo descarga las
+// imágenes de src/data/works.ts que falten en public/works/ (las ya presentes
+// se omiten). Sirve para reparar descargas fallidas sin cambiar el catálogo.
+if (process.argv.includes("--images-only")) {
+  const source = await readFile(new URL("../src/data/works.ts", import.meta.url), "utf8");
+  const imageIds = [...new Set([...source.matchAll(/"imageId": "([^"]+)"/g)].map((m) => m[1]))];
+  await mkdir(new URL("../public/works", import.meta.url), { recursive: true });
+  let ok = 0;
+  for (const imageId of imageIds) {
+    if (await downloadImage(imageId)) ok += 1;
+    await sleep(150);
+  }
+  console.log(`Imágenes disponibles: ${ok}/${imageIds.length}`);
+  process.exit(ok === imageIds.length ? 0 : 1);
 }
 
 const seen = new Set();

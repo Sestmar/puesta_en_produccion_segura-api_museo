@@ -8,6 +8,7 @@ import { EmptyState } from "@/components/ui/empty-state";
 import { Skeleton } from "@/components/ui/skeleton";
 import { formatLifespan } from "@/lib/format";
 import { imageForArtist } from "@/lib/images";
+import { CatalogImage } from "@/components/common/CatalogImage";
 import { useArtist, useArtworks } from "@/hooks/queries";
 
 export function ArtistDetailPage() {
@@ -52,7 +53,7 @@ export function ArtistDetailPage() {
 
       <header className="mt-8 grid gap-8 lg:grid-cols-[0.8fr_1.2fr] lg:items-center">
         <div className="relative aspect-4/5 overflow-hidden rounded-card border border-ink-700 lg:aspect-square">
-          <img
+          <CatalogImage
             src={imageForArtist(artist, 900)}
             alt={artist.name}
             className="size-full object-cover"
