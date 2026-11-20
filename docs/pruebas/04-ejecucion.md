@@ -20,17 +20,22 @@ Los ejemplos usan PowerShell; en Bash basta con cambiar `$env:VAR="x"` por `expo
    `SECRET_KEY` fuerte, porque la API arranca con `ENVIRONMENT=production`:
 
    ```powershell
-   docker compose -f docker-compose.yml -f docker-compose.perf.yml up --build -d
+   docker compose -p museo-perf -f docker-compose.yml -f docker-compose.perf.yml up --build -d
    ```
 
-   - Frontend (nginx): <http://localhost:5173>
-   - API: <http://localhost:8001>
+   - Frontend (nginx): <http://127.0.0.1:5173>
+   - API: <http://127.0.0.1:8001>
+
+   Se usa `127.0.0.1` y no `localhost` a propósito. En Windows, `localhost` resuelve primero a
+   IPv6 (`::1`), y el reenvío de puertos IPv6 de Docker Desktop se quedó colgado durante la
+   primera ejecución de S1: aceptaba la conexión y no respondía, mientras que por IPv4 todo
+   seguía funcionando.
 
 2. Cargar el catálogo y crear las cuentas de prueba. Hay que empezar con la base de datos vacía;
-   si no lo está, ejecuta antes `docker compose down -v`:
+   si no lo está, ejecuta antes `docker compose -p museo-perf down -v`:
 
    ```powershell
-   docker compose exec api python -m app.seed
+   docker compose -p museo-perf exec api python -m app.seed
    python -m tests_e2e.setup_local --load-users 10
    ```
 
@@ -98,11 +103,11 @@ locust -f tests_e2e/stress/locustfile.py --headless --host <API> `
 
 | Escenario | Comando (local; en prod cambia `--host` y define `$env:E2E_TARGET="prod"`) |
 |---|---|
-| L1 | `... --host http://localhost:8001 -u 5 -r 1 -t 3m ... CatalogVisitor` |
-| L2 | `... --host http://localhost:8001 -u 100 -r 5 -t 3m ... CatalogVisitor` |
+| L1 | `... --host http://127.0.0.1:8001 -u 5 -r 1 -t 3m ... CatalogVisitor` |
+| L2 | `... --host http://127.0.0.1:8001 -u 100 -r 5 -t 3m ... CatalogVisitor` |
 | L2b | Relanzar la API con `$env:DEFAULT_RATE_LIMIT="1000000 per minute"` y el `docker compose ... up -d` de 4.2; después `... -u 200 -r 10 -t 3m ... CatalogVisitor`. **Restaurar el límite al terminar.** |
-| L3 | `... --host http://localhost:8001 -u 9 -r 0.067 -t 4m ... AuthenticatedClient` |
-| L4 | `... --host http://localhost:8001 -u 5 -r 5 -t 1m ... BruteForceAttacker` |
+| L3 | `... --host http://127.0.0.1:8001 -u 9 -r 0.067 -t 4m ... AuthenticatedClient` |
+| L4 | `... --host http://127.0.0.1:8001 -u 5 -r 5 -t 1m ... BruteForceAttacker` |
 
 Entre escenarios hay que esperar al menos un minuto, para que la ventana del límite de tasa
 empiece limpia. La cuenta víctima de L4 queda bloqueada 15 minutos: no ejecutes L3 justo
