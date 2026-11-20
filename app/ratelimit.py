@@ -15,6 +15,9 @@ def build_limiter(*, storage_uri: str | None, default_limit):
         key_func=client_ip,
         default_limits=[default_limit],
         storage_uri=storage_uri or "memory://",
+        # Count per endpoint, not per URL. With the default ("url") every
+        # /artworks/{id} gets its own quota, so iterating ids bypasses the limit.
+        key_style="endpoint",
     )
 
 

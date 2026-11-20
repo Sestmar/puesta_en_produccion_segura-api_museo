@@ -37,3 +37,11 @@ def test_default_limit_applies_to_authenticated_writes(
         ).status_code
         == 429
     )
+
+
+def test_default_limit_is_shared_across_path_parameters(client, monkeypatch):
+    # El límite cuenta por endpoint, no por URL: cambiar el id no da un cupo nuevo.
+    monkeypatch.setattr(settings, "default_rate_limit", "2 per minute")
+    assert client.get("/artworks/1").status_code != 429
+    assert client.get("/artworks/2").status_code != 429
+    assert client.get("/artworks/3").status_code == 429
