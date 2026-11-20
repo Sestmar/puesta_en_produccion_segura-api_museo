@@ -1,0 +1,191 @@
+{
+  "objetivo": "local",
+  "base_url": "http://localhost:5173",
+  "fecha_utc": "20261120T152651Z",
+  "recorridos_por_navegador": 3,
+  "escalones": {
+    "1": {
+      "navegadores": 1,
+      "duracion_s": 10.6,
+      "paginas_cargadas": 15,
+      "paginas_por_segundo": 1.42,
+      "errores": 0,
+      "tasa_error_pct": 0.0,
+      "media_s": 0.393,
+      "p50_s": 0.219,
+      "p95_s": 0.754,
+      "max_s": 1.005,
+      "tipos_error": {},
+      "por_pagina": {
+        "artistas": {
+          "muestras": 3,
+          "errores": 0,
+          "p50_s": 0.108,
+          "p95_s": 0.166
+        },
+        "detalle": {
+          "muestras": 3,
+          "errores": 0,
+          "p50_s": 0.704,
+          "p95_s": 0.754
+        },
+        "obras": {
+          "muestras": 3,
+          "errores": 0,
+          "p50_s": 0.219,
+          "p95_s": 0.281
+        },
+        "portada": {
+          "muestras": 3,
+          "errores": 0,
+          "p50_s": 0.643,
+          "p95_s": 1.005
+        },
+        "salas": {
+          "muestras": 3,
+          "errores": 0,
+          "p50_s": 0.132,
+          "p95_s": 0.211
+        }
+      }
+    },
+    "5": {
+      "navegadores": 5,
+      "duracion_s": 34.9,
+      "paginas_cargadas": 75,
+      "paginas_por_segundo": 2.15,
+      "errores": 0,
+      "tasa_error_pct": 0.0,
+      "media_s": 1.901,
+      "p50_s": 1.596,
+      "p95_s": 3.818,
+      "max_s": 6.605,
+      "tipos_error": {},
+      "por_pagina": {
+        "artistas": {
+          "muestras": 15,
+          "errores": 0,
+          "p50_s": 1.288,
+          "p95_s": 1.655
+        },
+        "detalle": {
+          "muestras": 15,
+          "errores": 0,
+          "p50_s": 3.502,
+          "p95_s": 5.575
+        },
+        "obras": {
+          "muestras": 15,
+          "errores": 0,
+          "p50_s": 1.618,
+          "p95_s": 2.211
+        },
+        "portada": {
+          "muestras": 15,
+          "errores": 0,
+          "p50_s": 1.761,
+          "p95_s": 2.737
+        },
+        "salas": {
+          "muestras": 15,
+          "errores": 0,
+          "p50_s": 1.178,
+          "p95_s": 1.664
+        }
+      }
+    },
+    "10": {
+      "navegadores": 10,
+      "duracion_s": 95.7,
+      "paginas_cargadas": 150,
+      "paginas_por_segundo": 1.57,
+      "errores": 0,
+      "tasa_error_pct": 0.0,
+      "media_s": 5.49,
+      "p50_s": 4.066,
+      "p95_s": 15.454,
+      "max_s": 29.185,
+      "tipos_error": {},
+      "por_pagina": {
+        "artistas": {
+          "muestras": 30,
+          "errores": 0,
+          "p50_s": 2.304,
+          "p95_s": 7.612
+        },
+        "detalle": {
+          "muestras": 30,
+          "errores": 0,
+          "p50_s": 6.548,
+          "p95_s": 20.929
+        },
+        "obras": {
+          "muestras": 30,
+          "errores": 0,
+          "p50_s": 3.602,
+          "p95_s": 17.274
+        },
+        "portada": {
+          "muestras": 30,
+          "errores": 0,
+          "p50_s": 4.944,
+          "p95_s": 18.818
+        },
+        "salas": {
+          "muestras": 30,
+          "errores": 0,
+          "p50_s": 2.599,
+          "p95_s": 8.81
+        }
+      }
+    },
+    "20": {
+      "navegadores": 20,
+      "duracion_s": 752.3,
+      "paginas_cargadas": 18,
+      "paginas_por_segundo": 0.02,
+      "errores": 227,
+      "tasa_error_pct": 92.7,
+      "media_s": 10.027,
+      "p50_s": 6.199,
+      "p95_s": 28.504,
+      "max_s": 38.744,
+      "tipos_error": {
+        "TimeoutException": 220,
+        "WebDriverException": 7
+      },
+      "por_pagina": {
+        "artistas": {
+          "muestras": 60,
+          "errores": 59,
+          "p50_s": 23.889,
+          "p95_s": 23.889
+        },
+        "detalle": {
+          "muestras": 5,
+          "errores": 4,
+          "p50_s": 38.744,
+          "p95_s": 38.744
+        },
+        "obras": {
+          "muestras": 60,
+          "errores": 55,
+          "p50_s": 2.646,
+          "p95_s": 28.504
+        },
+        "portada": {
+          "muestras": 60,
+          "errores": 49,
+          "p50_s": 6.199,
+          "p95_s": 11.923
+        },
+        "salas": {
+          "muestras": 60,
+          "errores": 60,
+          "p50_s": 0.0,
+          "p95_s": 0.0
+        }
+      }
+    }
+  }
+}

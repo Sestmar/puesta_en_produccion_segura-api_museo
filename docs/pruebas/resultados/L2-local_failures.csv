@@ -1,0 +1,7 @@
+Method,Name,Error,Occurrences,First Seen,Last Seen
+GET,/artworks/{id},CatchResponseError('429 rate limited'),1519,2026-11-20T16:33:35Z,2026-11-20T16:36:16Z
+GET,/artworks?room_id,CatchResponseError('429 rate limited'),529,2026-11-20T16:33:32Z,2026-11-20T16:36:16Z
+GET,/rooms,CatchResponseError('429 rate limited'),937,2026-11-20T16:33:39Z,2026-11-20T16:36:16Z
+GET,/artworks,CatchResponseError('429 rate limited'),2121,2026-11-20T16:33:32Z,2026-11-20T16:36:16Z
+GET,/artists,CatchResponseError('429 rate limited'),911,2026-11-20T16:33:38Z,2026-11-20T16:36:16Z
+GET,/artists/{id},CatchResponseError('429 rate limited'),293,2026-11-20T16:33:54Z,2026-11-20T16:36:16Z
