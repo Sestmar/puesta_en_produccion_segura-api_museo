@@ -40,8 +40,8 @@ def main() -> int:
     args = parser.parse_args()
 
     cfg = load_config()
-    if cfg.target != "local" or "localhost" not in cfg.api_url:
-        print("setup_local solo se ejecuta contra localhost.", file=sys.stderr)
+    if cfg.target != "local" or not any(h in cfg.api_url for h in ("127.0.0.1", "localhost")):
+        print("setup_local solo se ejecuta contra la máquina local.", file=sys.stderr)
         return 2
 
     admin_pw, client_pw, load_pw = _password(), _password(), _password()

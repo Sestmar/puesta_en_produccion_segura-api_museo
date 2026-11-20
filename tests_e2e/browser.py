@@ -5,7 +5,9 @@ import time
 
 from selenium import webdriver
 from selenium.common.exceptions import TimeoutException
+from selenium.webdriver.chrome.service import Service
 from selenium.webdriver.common.by import By
+from selenium.webdriver.common.driver_finder import DriverFinder
 from selenium.webdriver.remote.webdriver import WebDriver
 from selenium.webdriver.remote.webelement import WebElement
 from selenium.webdriver.support import expected_conditions as EC
@@ -21,8 +23,7 @@ LOGIN_RATE_WINDOW_SECONDS = 61
 RATE_LIMIT_MESSAGE = "Demasiados intentos"
 
 
-def make_driver(cfg: E2EConfig, *, headless: bool | None = None) -> WebDriver:
-    """Crea un Chrome. Selenium Manager descarga el chromedriver adecuado."""
+def chrome_options(cfg: E2EConfig, *, headless: bool | None = None) -> webdriver.ChromeOptions:
     options = webdriver.ChromeOptions()
     if cfg.headless if headless is None else headless:
         options.add_argument("--headless=new")
@@ -33,7 +34,26 @@ def make_driver(cfg: E2EConfig, *, headless: bool | None = None) -> WebDriver:
     options.add_argument("--disable-dev-shm-usage")
     # Permite leer la consola del navegador (violaciones de CSP, errores JS).
     options.set_capability("goog:loggingPrefs", {"browser": "ALL"})
-    driver = webdriver.Chrome(options=options)
+    return options
+
+
+def resolve_driver_path(cfg: E2EConfig) -> str:
+    """Resuelve una sola vez la ruta del chromedriver con Selenium Manager.
+
+    Si muchos hilos crean navegadores a la vez, cada uno lanza Selenium Manager y
+    todos escriben a la vez ``~/.cache/selenium/se-metadata.json``, que acaba
+    corrupto y provoca ``WebDriverException`` al arrancar.
+    """
+    return DriverFinder(Service(), chrome_options(cfg)).get_driver_path()
+
+
+def make_driver(
+    cfg: E2EConfig, *, headless: bool | None = None, driver_path: str | None = None
+) -> WebDriver:
+    """Crea un Chrome. Sin ``driver_path``, Selenium Manager busca el chromedriver."""
+    options = chrome_options(cfg, headless=headless)
+    service = Service(executable_path=driver_path) if driver_path else Service()
+    driver = webdriver.Chrome(options=options, service=service)
     driver.set_page_load_timeout(60)
     return driver
 

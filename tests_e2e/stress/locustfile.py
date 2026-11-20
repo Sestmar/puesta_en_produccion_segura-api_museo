@@ -16,7 +16,7 @@ fallo con el mensaje «429 rate limited» para que aparezca separado en la tabla
 de errores de Locust; cualquier 5xx es un fallo real del servicio.
 
 Ejemplo (local, interfaz web en http://localhost:8089):
-  locust -f tests_e2e/stress/locustfile.py --host http://localhost:8001 CatalogVisitor
+  locust -f tests_e2e/stress/locustfile.py --host http://127.0.0.1:8001 CatalogVisitor
 """
 
 import itertools
@@ -77,7 +77,7 @@ def _save_attack_outcomes(environment, **_kwargs) -> None:
     # respuesta refleje el bloqueo y no el límite de tasa.
     lockout_check = None
     if PASSWORD:
-        print("Esperando 61 s para comprobar el bloqueo de la cuenta víctima…")
+        print("Esperando 61 s para comprobar el bloqueo de la cuenta victima...")
         time.sleep(61)
         host = environment.host or CFG.api_url
         lockout_check = requests.post(
@@ -101,7 +101,7 @@ def _save_attack_outcomes(environment, **_kwargs) -> None:
         ),
         encoding="utf-8",
     )
-    print(f"Resultado de fuerza bruta: {dict(attack_outcomes)} → {path}")
+    print(f"Resultado de fuerza bruta: {dict(attack_outcomes)} -> {path}")
 
 
 def _check(response, expected: tuple[int, ...] = (200,)) -> None:

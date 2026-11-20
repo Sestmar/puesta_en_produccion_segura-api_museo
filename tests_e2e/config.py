@@ -57,8 +57,8 @@ def load_config() -> E2EConfig:
     is_prod = target == "prod"
     return E2EConfig(
         target=target,
-        base_url=os.environ.get("E2E_BASE_URL", "http://localhost:5173").rstrip("/"),
-        api_url=os.environ.get("E2E_API_URL", "http://localhost:8001").rstrip("/"),
+        base_url=os.environ.get("E2E_BASE_URL", "http://127.0.0.1:5173").rstrip("/"),
+        api_url=os.environ.get("E2E_API_URL", "http://127.0.0.1:8001").rstrip("/"),
         admin_user=os.environ.get("E2E_ADMIN_USER"),
         admin_password=os.environ.get("E2E_ADMIN_PASSWORD"),
         client_user=os.environ.get("E2E_CLIENT_USER"),

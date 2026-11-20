@@ -28,7 +28,7 @@ from selenium.common.exceptions import WebDriverException
 from selenium.webdriver.common.by import By
 from selenium.webdriver.support import expected_conditions as EC
 
-from tests_e2e.browser import make_driver, wait, wait_heading
+from tests_e2e.browser import make_driver, resolve_driver_path, wait, wait_heading
 from tests_e2e.config import E2EConfig, load_config
 
 RESULTS_DIR = Path(__file__).resolve().parents[1] / "results"
@@ -65,9 +65,11 @@ def _timed(samples: list[Sample], lock: threading.Lock, base: dict, page: str, a
     return sample.ok
 
 
-def _journey(cfg: E2EConfig, level: int, worker: int, iterations: int, samples, lock) -> None:
+def _journey(
+    cfg: E2EConfig, driver_path: str, level: int, worker: int, iterations: int, samples, lock
+) -> None:
     try:
-        driver = make_driver(cfg, headless=True)
+        driver = make_driver(cfg, headless=True, driver_path=driver_path)
     except WebDriverException as exc:
         with lock:
             samples.append(Sample(level, worker, 0, "arranque", 0.0, False, type(exc).__name__))
@@ -170,6 +172,7 @@ def main() -> int:
     args = parser.parse_args()
 
     cfg = load_config()
+    driver_path = resolve_driver_path(cfg)
     levels = [int(x) for x in args.levels.split(",") if x.strip()]
     stamp = datetime.now(UTC).strftime("%Y%m%dT%H%M%SZ")
     out_dir = RESULTS_DIR / f"selenium-{cfg.target}-{stamp}"
@@ -183,7 +186,9 @@ def main() -> int:
         start = time.perf_counter()
         with ThreadPoolExecutor(max_workers=level) as pool:
             for worker in range(1, level + 1):
-                pool.submit(_journey, cfg, level, worker, args.iterations, samples, lock)
+                pool.submit(
+                    _journey, cfg, driver_path, level, worker, args.iterations, samples, lock
+                )
         durations[level] = time.perf_counter() - start
         level_samples = [s for s in samples if s.level == level]
         errors = sum(not s.ok for s in level_samples)

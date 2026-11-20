@@ -29,7 +29,9 @@ services:
       context: ./frontend
       target: prod
       args:
-        VITE_API_URL: ${VITE_API_URL:-http://localhost:8001}
+        # 127.0.0.1 y no localhost: el reenvío IPv6 (::1) de Docker Desktop
+        # en Windows se cuelga bajo carga. Ver docs/pruebas/04-ejecucion.md.
+        VITE_API_URL: ${VITE_API_URL:-http://127.0.0.1:8001}
     ports: !override
       - "5173:8080"
     volumes: !reset []
