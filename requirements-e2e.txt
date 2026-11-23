@@ -1,6 +1,6 @@
 # Dependencias de las pruebas funcionales (Selenium) y de estrés (Selenium + Locust).
 # Van aparte de requirements-dev.txt para no cargar el CI de tests unitarios.
-pytest==9.1.1
+pytest==9.2.0
 selenium==4.53.0
 locust==2.47.0
 requests==2.34.2
