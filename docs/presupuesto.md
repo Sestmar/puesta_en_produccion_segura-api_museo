@@ -1,6 +1,8 @@
 # Presupuesto comparativo de despliegue en AWS, Azure, Google Cloud y Render
 
-4 de noviembre de 2026
+**Fecha del presupuesto:** 4 de noviembre de 2026
+
+**Moneda:** importes en dólares estadounidenses (USD) y euros (EUR). Conversión con el tipo de cambio de referencia del Banco Central Europeo del 4 de noviembre de 2026: **1 EUR = 1,1267 USD**.
 
 ## Alcance y supuestos
 
@@ -16,88 +18,97 @@ El presupuesto calcula el coste mensual, con precios de lista bajo demanda, de u
 Supuestos de cálculo:
 
 - Regiones de España, por proximidad a los usuarios y para mantener los datos en la UE (RGPD): AWS eu-south-2 (Aragón), Azure Spain Central (Madrid) y Google Cloud europe-southwest1 (Madrid). Render no tiene región en España; se usa Frankfurt, que cuesta lo mismo que sus otras regiones.
-- Precios en USD, sin impuestos, sin descuentos por compromiso (Reserved Instances, Savings Plans, CUD) ni capas gratuitas.
+- Precios de lista en USD, convertidos a EUR con el tipo del BCE indicado arriba, sin impuestos (IVA no incluido), sin descuentos por compromiso (Reserved Instances, Savings Plans, CUD) ni capas gratuitas.
 - Base de datos en una sola zona, sin réplica en alta disponibilidad: duplicaría su coste en las tres nubes.
 - El WAF se dimensiona para un tráfico modesto: 1 millón de peticiones al mes.
 - Sin balanceador de carga dedicado salvo donde el WAF lo exige para poder conectarse.
 
 ## Comparativa de costes mensuales
 
-AWS es la opción más barata (111,58 USD/mes) y Azure la más cara (450,54 USD/mes), casi todo por el WAF. En las regiones españolas las tres nubes salen entre un 8 % y un 25 % más caras que en EE. UU.; Render no cambia.
+AWS es la opción más barata (111,58 USD / 99,03 EUR al mes) y Azure la más cara (450,54 USD / 399,88 EUR al mes), casi todo por el WAF. En las regiones españolas las tres nubes salen entre un 8 % y un 25 % más caras que en EE. UU.; Render no cambia.
 
-| Plataforma | Cómputo (USD) | Base de datos (USD) | Red (USD) | Seguridad (USD) | Total (USD/mes) |
-| --- | --: | --: | --: | --: | --: |
-| AWS | 33,29 | 63,29 | 0,00 | 15,00 | **111,58** |
-| Google Cloud | 28,86 | 106,56 | 11,88 | 33,80 | **181,10** |
-| Render | 110,00 | 89,70 | 11,25 | 25,00 | **235,95** |
-| Azure | 33,43 | 64,96 | 0,00 | 352,15 | **450,54** |
+| Plataforma | Cómputo (USD) | Base de datos (USD) | Red (USD) | Seguridad (USD) | Total (USD/mes) | Total (EUR/mes) |
+| --- | --: | --: | --: | --: | --: | --: |
+| AWS | 33,29 | 63,29 | 0,00 | 15,00 | **111,58** | **99,03** |
+| Google Cloud | 28,86 | 106,56 | 11,88 | 33,80 | **181,10** | **160,73** |
+| Render | 110,00 | 89,70 | 11,25 | 25,00 | **235,95** | **209,42** |
+| Azure | 33,43 | 64,96 | 0,00 | 352,15 | **450,54** | **399,88** |
 
-Seguridad agrupa WAF, certificados TLS y el almacenamiento de 50 GB de copias, junto con el balanceador o CDN que el WAF necesita para funcionar. En Render, Cómputo incluye la cuota del espacio de trabajo Pro (25 USD).
+Seguridad agrupa WAF, certificados TLS y el almacenamiento de 50 GB de copias, junto con el balanceador o CDN que el WAF necesita para funcionar. En Render, Cómputo incluye la cuota del espacio de trabajo Pro (25 USD). Cada importe en euros se convierte por separado y se redondea a dos decimales, por lo que la suma de las líneas puede diferir en 0,01 EUR del total.
+
+En términos anuales, sin variaciones de precio ni de tipo de cambio:
+
+| Plataforma | Total (USD/año) | Total (EUR/año) |
+| --- | --: | --: |
+| AWS | 1.338,96 | 1.188,39 |
+| Google Cloud | 2.173,20 | 1.928,82 |
+| Render | 2.831,40 | 2.513,00 |
+| Azure | 5.406,48 | 4.798,51 |
 
 ## Desglose por plataforma
 
-Cada línea indica el servicio elegido, su precio unitario y el cálculo a 730 h/mes.
+Cada línea indica el servicio elegido, su precio unitario de lista (en USD, como lo publica el proveedor) y el importe mensual en USD y EUR, calculado a 730 h/mes.
 
 ### AWS (eu-south-2, España)
 
-| Concepto | Servicio | Precio unitario | Mensual (USD) |
-| --- | --- | --- | --: |
-| Cómputo | EC2 t3.medium (2 vCPU, 4 GiB), Linux | 0,0456 USD/h | 33,29 |
-| Base de datos | RDS for PostgreSQL db.t3.medium, Single-AZ | 0,078 USD/h | 56,94 |
-| Base de datos | Almacenamiento gp3, 50 GB | 0,127 USD/GB-mes | 6,35 |
-| Red | 100 GB de salida servidos por CloudFront | incluidos en el plan Pro (50 TB) | 0,00 |
-| Seguridad | CloudFront plan Pro: AWS WAF (25 reglas), DDoS siempre activo, 10 M peticiones | 15 USD/mes (precio global) | 15,00 |
-| Seguridad | Certificado TLS de AWS Certificate Manager | gratuito | 0,00 |
-| Seguridad | Copias de RDS, 50 GB | gratis hasta el 100 % del almacenamiento aprovisionado | 0,00 |
+| Concepto | Servicio | Precio unitario | Mensual (USD) | Mensual (EUR) |
+| --- | --- | --- | --: | --: |
+| Cómputo | EC2 t3.medium (2 vCPU, 4 GiB), Linux | 0,0456 USD/h | 33,29 | 29,55 |
+| Base de datos | RDS for PostgreSQL db.t3.medium, Single-AZ | 0,078 USD/h | 56,94 | 50,54 |
+| Base de datos | Almacenamiento gp3, 50 GB | 0,127 USD/GB-mes | 6,35 | 5,64 |
+| Red | 100 GB de salida servidos por CloudFront | incluidos en el plan Pro (50 TB) | 0,00 | 0,00 |
+| Seguridad | CloudFront plan Pro: AWS WAF (25 reglas), DDoS siempre activo, 10 M peticiones | 15 USD/mes (precio global) | 15,00 | 13,31 |
+| Seguridad | Certificado TLS de AWS Certificate Manager | gratuito | 0,00 | 0,00 |
+| Seguridad | Copias de RDS, 50 GB | gratis hasta el 100 % del almacenamiento aprovisionado | 0,00 | 0,00 |
 
-Sin CloudFront, el WAF regional exige un Application Load Balancer (en us-east-1, 0,0225 USD/h más 0,008 USD/LCU-h, unos 22 USD/mes) y la web ACL (5 USD/mes, 1 USD por regla, 0,60 USD por millón de peticiones). La salida a Internet seguiría costando 0 USD, porque AWS regala 100 GB/mes.
+Sin CloudFront, el WAF regional exige un Application Load Balancer (en us-east-1, 0,0225 USD/h más 0,008 USD/LCU-h, unos 22 USD / 19,53 EUR al mes) y la web ACL (5 USD/mes, 1 USD por regla, 0,60 USD por millón de peticiones). La salida a Internet seguiría costando 0 USD, porque AWS regala 100 GB/mes.
 
 ### Google Cloud (europe-southwest1, Madrid)
 
-| Concepto | Servicio | Precio unitario | Mensual (USD) |
-| --- | --- | --- | --: |
-| Cómputo | Compute Engine e2-medium (2 vCPU compartidas, 4 GB) | 0,0395 USD/h | 28,86 |
-| Base de datos | Cloud SQL for PostgreSQL Enterprise, 2 vCPU + 4 GB, zona única | ≈ 0,0491 USD/vCPU-h + ≈ 0,0085 USD/GB-h | 96,36 |
-| Base de datos | Almacenamiento SSD, 50 GB | ≈ 0,204 USD/GB-mes (estimado) | 10,20 |
-| Red | Salida Premium Tier a Internet (99 GB facturables) | 0,12 USD/GiB | 11,88 |
-| Seguridad | Application Load Balancer externo global (regla de reenvío) | 0,025 USD/h | 18,25 |
-| Seguridad | Cloud Armor Standard: 1 política, 5 reglas, 1 M peticiones | 5 USD + 1 USD/regla + 0,75 USD/M | 10,75 |
-| Seguridad | Certificado TLS gestionado por Google | gratuito | 0,00 |
-| Seguridad | Copias de Cloud SQL, 50 GB | ≈ 0,096 USD/GB-mes (estimado) | 4,80 |
+| Concepto | Servicio | Precio unitario | Mensual (USD) | Mensual (EUR) |
+| --- | --- | --- | --: | --: |
+| Cómputo | Compute Engine e2-medium (2 vCPU compartidas, 4 GB) | 0,0395 USD/h | 28,86 | 25,61 |
+| Base de datos | Cloud SQL for PostgreSQL Enterprise, 2 vCPU + 4 GB, zona única | ≈ 0,0491 USD/vCPU-h + ≈ 0,0085 USD/GB-h | 96,36 | 85,52 |
+| Base de datos | Almacenamiento SSD, 50 GB | ≈ 0,204 USD/GB-mes (estimado) | 10,20 | 9,05 |
+| Red | Salida Premium Tier a Internet (99 GB facturables) | 0,12 USD/GiB | 11,88 | 10,54 |
+| Seguridad | Application Load Balancer externo global (regla de reenvío) | 0,025 USD/h | 18,25 | 16,20 |
+| Seguridad | Cloud Armor Standard: 1 política, 5 reglas, 1 M peticiones | 5 USD + 1 USD/regla + 0,75 USD/M | 10,75 | 9,54 |
+| Seguridad | Certificado TLS gestionado por Google | gratuito | 0,00 | 0,00 |
+| Seguridad | Copias de Cloud SQL, 50 GB | ≈ 0,096 USD/GB-mes (estimado) | 4,80 | 4,26 |
 
 El e2-medium usa vCPU compartidas con ráfagas. Las páginas oficiales de Compute Engine y Cloud SQL solo traen en el HTML los precios de Iowa y cargan los de Madrid de forma dinámica. Por eso los precios de Madrid se tomaron de agregadores basados en los SKU oficiales (gcloud-compute.com y Bytebase), y quedan entre un 18 % y un 20 % por encima de Iowa. El almacenamiento y las copias de Cloud SQL se estiman aplicando ese mismo +20 %; conviene confirmarlos en la calculadora.
 
 ### Render (Frankfurt)
 
-| Concepto | Servicio | Precio unitario | Mensual (USD) |
-| --- | --- | --- | --: |
-| Cómputo | Espacio de trabajo Pro | 25 USD/mes | 25,00 |
-| Cómputo | Web Service 2 CPU / 4 GB (2c-4g) | 85 USD/mes | 85,00 |
-| Base de datos | Render Postgres 2 CPU / 4 GB (2c-4g) | 75 USD/mes | 75,00 |
-| Base de datos | Almacenamiento ampliable, 49 GB adicionales (1 GB incluido) | 0,30 USD/GB-mes | 14,70 |
-| Red | 75 GB por encima de los 25 GB incluidos en Pro | 0,15 USD/GB | 11,25 |
-| Seguridad | Cloudflare Pro delante del servicio (WAF con reglas gestionadas) | 25 USD/mes con pago mensual | 25,00 |
-| Seguridad | TLS automático y mitigación DDoS de Render | incluidos | 0,00 |
-| Seguridad | Copias lógicas y PITR de 7 días | incluidos en Pro | 0,00 |
+| Concepto | Servicio | Precio unitario | Mensual (USD) | Mensual (EUR) |
+| --- | --- | --- | --: | --: |
+| Cómputo | Espacio de trabajo Pro | 25 USD/mes | 25,00 | 22,19 |
+| Cómputo | Web Service 2 CPU / 4 GB (2c-4g) | 85 USD/mes | 85,00 | 75,44 |
+| Base de datos | Render Postgres 2 CPU / 4 GB (2c-4g) | 75 USD/mes | 75,00 | 66,57 |
+| Base de datos | Almacenamiento ampliable, 49 GB adicionales (1 GB incluido) | 0,30 USD/GB-mes | 14,70 | 13,05 |
+| Red | 75 GB por encima de los 25 GB incluidos en Pro | 0,15 USD/GB | 11,25 | 9,98 |
+| Seguridad | Cloudflare Pro delante del servicio (WAF con reglas gestionadas) | 25 USD/mes con pago mensual | 25,00 | 22,19 |
+| Seguridad | TLS automático y mitigación DDoS de Render | incluidos | 0,00 | 0,00 |
+| Seguridad | Copias lógicas y PITR de 7 días | incluidos en Pro | 0,00 | 0,00 |
 
 Render ya no vende el plan "Standard" con esos recursos: Standard ofrecía 1 CPU y 2 GB por 25 USD. Para cumplir el requisito de 2 vCPU y 4 GB hace falta la instancia 2c-4g.
 
 ### Azure (Spain Central)
 
-| Concepto | Servicio | Precio unitario | Mensual (USD) |
-| --- | --- | --- | --: |
-| Cómputo | Máquina virtual B2s (2 vCPU, 4 GB), Linux | 0,0458 USD/h | 33,43 |
-| Base de datos | Azure Database for PostgreSQL Flexible Server, Burstable B2s | 0,0796 USD/h | 58,11 |
-| Base de datos | Almacenamiento, 50 GB | 0,1369 USD/GB-mes | 6,85 |
-| Red | 100 GB de salida a Internet | primeros 100 GB gratis | 0,00 |
-| Seguridad | Application Gateway WAF v2: coste fijo | 0,468 USD/h | 341,64 |
-| Seguridad | Application Gateway WAF v2: 1 unidad de capacidad | 0,0144 USD/h | 10,51 |
-| Seguridad | Certificado TLS (Let's Encrypt importado en Key Vault) | gratuito | 0,00 |
-| Seguridad | Copias de PostgreSQL, 50 GB | gratis hasta el 100 % del almacenamiento aprovisionado | 0,00 |
+| Concepto | Servicio | Precio unitario | Mensual (USD) | Mensual (EUR) |
+| --- | --- | --- | --: | --: |
+| Cómputo | Máquina virtual B2s (2 vCPU, 4 GB), Linux | 0,0458 USD/h | 33,43 | 29,67 |
+| Base de datos | Azure Database for PostgreSQL Flexible Server, Burstable B2s | 0,0796 USD/h | 58,11 | 51,58 |
+| Base de datos | Almacenamiento, 50 GB | 0,1369 USD/GB-mes | 6,85 | 6,08 |
+| Red | 100 GB de salida a Internet | primeros 100 GB gratis | 0,00 | 0,00 |
+| Seguridad | Application Gateway WAF v2: coste fijo | 0,468 USD/h | 341,64 | 303,22 |
+| Seguridad | Application Gateway WAF v2: 1 unidad de capacidad | 0,0144 USD/h | 10,51 | 9,33 |
+| Seguridad | Certificado TLS (Let's Encrypt importado en Key Vault) | gratuito | 0,00 | 0,00 |
+| Seguridad | Copias de PostgreSQL, 50 GB | gratis hasta el 100 % del almacenamiento aprovisionado | 0,00 | 0,00 |
 
-Azure Front Door Standard con política WAF bajaría la seguridad a unos 44 USD/mes (35 USD de base, 5 USD por política, 1 USD por regla y 0,60 USD por millón de peticiones). Sin embargo, solo admite reglas personalizadas: los conjuntos de reglas gestionados (OWASP) requieren Front Door Premium o Application Gateway WAF v2.
+Azure Front Door Standard con política WAF bajaría la seguridad a unos 44 USD / 39,05 EUR al mes (35 USD de base, 5 USD por política, 1 USD por regla y 0,60 USD por millón de peticiones). Sin embargo, solo admite reglas personalizadas: los conjuntos de reglas gestionados (OWASP) requieren Front Door Premium o Application Gateway WAF v2.
 
-Ninguna de las tres nubes incluye en el cómputo el disco de arranque de la VM, que añade entre 1 y 3 USD/mes.
+Ninguna de las tres nubes incluye en el cómputo el disco de arranque de la VM, que añade entre 1 y 3 USD/mes (0,89-2,66 EUR).
 
 ## Justificación de los componentes de seguridad
 
@@ -118,18 +129,20 @@ Los tres criterios responden a riesgos concretos:
 
 ## Conclusión
 
-Se recomienda AWS: cumple todos los requisitos de seguridad por 111,58 USD/mes en su región de España, un 38 % menos que la siguiente opción.
+Se recomienda AWS: cumple todos los requisitos de seguridad por 111,58 USD/mes (99,03 EUR) en su región de España, un 38 % menos que la siguiente opción.
 
-- **AWS** gana porque el plan CloudFront Pro agrupa WAF, DDoS, TLS y 50 TB de tráfico por 15 USD/mes, y las copias de RDS no se cobran hasta los 50 GB.
-- **Google Cloud** (181,10 USD) es la segunda opción: Cloud Armor es barato, pero el balanceador obligatorio y una base de datos más cara en Madrid suben el total.
-- **Render** (235,95 USD) es la más sencilla de operar, con TLS, DDoS y PITR incluidos, pero cobra más por los mismos recursos, necesita un WAF externo y no tiene región en España.
-- **Azure** (450,54 USD) es la más cara porque su WAF con reglas gestionadas exige Application Gateway, que en Spain Central cuesta 352 USD/mes por sí solo.
+- **AWS** gana porque el plan CloudFront Pro agrupa WAF, DDoS, TLS y 50 TB de tráfico por 15 USD/mes (13,31 EUR), y las copias de RDS no se cobran hasta los 50 GB.
+- **Google Cloud** (181,10 USD / 160,73 EUR) es la segunda opción: Cloud Armor es barato, pero el balanceador obligatorio y una base de datos más cara en Madrid suben el total.
+- **Render** (235,95 USD / 209,42 EUR) es la más sencilla de operar, con TLS, DDoS y PITR incluidos, pero cobra más por los mismos recursos, necesita un WAF externo y no tiene región en España.
+- **Azure** (450,54 USD / 399,88 EUR) es la más cara porque su WAF con reglas gestionadas exige Application Gateway, que en Spain Central cuesta 352 USD/mes (312,55 EUR) por sí solo.
 
 Si el equipo no tiene experiencia en infraestructura, Render compensa su sobrecoste con menos superficie de configuración y, por tanto, menos riesgo de errores. Para producción real conviene añadir alta disponibilidad a la base de datos, que en las tres nubes duplica su coste.
 
 ## Fuentes
 
 Precios consultados el 4 de noviembre de 2026 en las páginas oficiales de cada proveedor.
+
+- Tipo de cambio: [BCE, tipos de cambio de referencia del euro](https://www.ecb.europa.eu/stats/policy_and_exchange_rates/euro_reference_exchange_rates/html/index.es.html) (USD, 4 de noviembre de 2026: 1,1267)
 
 - AWS: [AWS Pricing](https://aws.amazon.com/pricing/), [EC2 On-Demand](https://aws.amazon.com/ec2/pricing/on-demand/), [RDS for PostgreSQL](https://aws.amazon.com/rds/postgresql/pricing/), [AWS WAF](https://aws.amazon.com/waf/pricing/), [CloudFront](https://aws.amazon.com/cloudfront/pricing/), [Elastic Load Balancing](https://aws.amazon.com/elasticloadbalancing/pricing/)
 - Azure: [Calculadora de precios de Azure](https://azure.microsoft.com/es-es/pricing/calculator/), [Azure Retail Prices API](https://prices.azure.com/api/retail/prices) (consultada para Spain Central: B2s, PostgreSQL Flexible Server, Application Gateway y ancho de banda; Front Door como servicio global)
